@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
+	"github.com/deepch/vdk/format/mp4"
 	"github.com/deepch/vdk/format/ts"
 )
 
@@ -33,13 +35,24 @@ func New(parsedUrl *url.URL) *HTTPClient {
 	}
 }
 
-func (h *HTTPClient) getDemuxerFunc() (func(r io.Reader) av.Demuxer, error) {
+func (h *HTTPClient) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error) {
 	ext := filepath.Ext(path.Base(h.url.Path))
 	switch ext {
 	case ".flv":
-		return func(r io.Reader) av.Demuxer { return flv.NewDemuxer(r) }, nil
+		return func(r io.Reader) (av.Demuxer, error) { return flv.NewDemuxer(r), nil }, nil
 	case ".ts":
-		return func(r io.Reader) av.Demuxer { return ts.NewDemuxer(r) }, nil
+		return func(r io.Reader) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
+	case ".mp4":
+		return func(r io.Reader) (av.Demuxer, error) {
+			if h.isLive {
+				return nil, fmt.Errorf("not supported for live streams: %s", ext)
+			}
+			data, err := io.ReadAll(r)
+			if err != nil {
+				return nil, err
+			}
+			return mp4.NewDemuxer(bytes.NewReader(data)), nil
+		}, nil
 	}
 	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
@@ -61,6 +74,7 @@ func (h *HTTPClient) Dial() error {
 	if err != nil {
 		return err
 	}
+	h.closer = resp.Body
 
 	contentLength, _ := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 	if contentLength <= 0 {
@@ -68,12 +82,15 @@ func (h *HTTPClient) Dial() error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		h.Close()
 		return fmt.Errorf("status code: %s", resp.Status)
 	}
 
-	h.closer = resp.Body
-	h.demuxer = newDemuxer(resp.Body)
+	if h.demuxer, err = newDemuxer(resp.Body); err != nil {
+		h.Close()
+		return err
+	}
+
 	return nil
 }
 
