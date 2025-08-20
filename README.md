@@ -10,6 +10,7 @@
   - HTTP-FLV / HTTPS-FLV
   - HTTP-TS / HTTPS-TS
   - HTTP-MP4 / HTTPS-MP4
+  - HLS-TS / HLS-fMP4
 - Supports codecs:
   - H264
   - AAC

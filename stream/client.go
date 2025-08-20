@@ -3,7 +3,10 @@ package stream
 import (
 	"fmt"
 	"net/url"
+	"path"
+	"path/filepath"
 
+	"github.com/jaesung9507/playgo/stream/hls"
 	"github.com/jaesung9507/playgo/stream/http"
 	"github.com/jaesung9507/playgo/stream/rtmp"
 	"github.com/jaesung9507/playgo/stream/rtsp"
@@ -32,7 +35,12 @@ func Dial(streamUrl string) (Client, error) {
 	case "rtmp", "rtmps":
 		client = rtmp.New(parsedUrl)
 	case "http", "https":
-		client = http.New(parsedUrl)
+		switch filepath.Ext(path.Base(parsedUrl.Path)) {
+		case ".m3u8":
+			client = hls.New(parsedUrl)
+		default:
+			client = http.New(parsedUrl)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
 	}
