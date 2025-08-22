@@ -10,6 +10,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/http"
 	"github.com/jaesung9507/playgo/stream/rtmp"
 	"github.com/jaesung9507/playgo/stream/rtsp"
+	"github.com/jaesung9507/playgo/stream/srt"
 
 	"github.com/deepch/vdk/av"
 )
@@ -41,6 +42,8 @@ func Dial(streamUrl string) (Client, error) {
 		default:
 			client = http.New(parsedUrl)
 		}
+	case "srt":
+		client = srt.New(parsedUrl)
 	default:
 		return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
 	}

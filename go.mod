@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/bluenviron/gohlslib/v2 v2.2.2
 	github.com/bluenviron/mediacommon/v2 v2.4.0
+	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
 	github.com/wailsapp/wails/v2 v2.10.2
 )
@@ -13,6 +14,7 @@ require (
 	github.com/abema/go-mp4 v1.4.1 // indirect
 	github.com/asticode/go-astikit v0.30.0 // indirect
 	github.com/asticode/go-astits v1.13.0 // indirect
+	github.com/benburkert/openpgp v0.0.0-20160410205803-c2471f86866c // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
