@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/rtmp"
@@ -17,14 +18,14 @@ const (
 type RTMPClient struct {
 	url         *url.URL
 	conn        *rtmp.Conn
-	signal      chan interface{}
+	signal      chan any
 	packetQueue chan *av.Packet
 }
 
 func New(parsedUrl *url.URL) *RTMPClient {
 	return &RTMPClient{
 		url:         parsedUrl,
-		signal:      make(chan interface{}),
+		signal:      make(chan any),
 		packetQueue: make(chan *av.Packet),
 	}
 }
@@ -38,7 +39,7 @@ func (r *RTMPClient) Dial() error {
 		}
 	}
 
-	conn, err := net.Dial("tcp", r.url.Host)
+	conn, err := net.DialTimeout("tcp", r.url.Host, 3*time.Second)
 	if err != nil {
 		return err
 	}
@@ -66,10 +67,17 @@ func (r *RTMPClient) Close() {
 }
 
 func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
+	if err := r.conn.NetConn().SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		return nil, err
+	}
 	streams, err := r.conn.Streams()
 	if err == nil {
 		go func() {
 			for {
+				if err := r.conn.NetConn().SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+					r.signal <- err
+					return
+				}
 				packet, err := r.conn.ReadPacket()
 				if err != nil {
 					r.signal <- err
@@ -86,6 +94,6 @@ func (r *RTMPClient) PacketQueue() <-chan *av.Packet {
 	return r.packetQueue
 }
 
-func (r *RTMPClient) CloseCh() <-chan interface{} {
+func (r *RTMPClient) CloseCh() <-chan any {
 	return r.signal
 }

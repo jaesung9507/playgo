@@ -44,7 +44,12 @@ window.OnPlayGo = function () {
             return;
         }
 
-        PlayStream(url).then(ok => { if (ok) inputUrl.disabled = true; });
+        btnPlayGo.disabled = true;
+        inputUrl.disabled = true;
+        PlayStream(url).then(ok => {
+            btnPlayGo.disabled = false;
+             if (!ok) inputUrl.disabled = false;
+        });
     }
 };
 

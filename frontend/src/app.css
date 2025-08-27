@@ -26,7 +26,13 @@
     cursor: pointer;
 }
 
-.input-box .btn:hover {
+.input-box .btn:disabled {
+    cursor: not-allowed;
+    background-color: #cccccc;
+    color: #666666;
+}
+
+.input-box .btn:not(:disabled):hover {
     background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
     color: #333333;
 }
