@@ -11,6 +11,12 @@ let isAppending = false;
 const btnPlayGo = document.getElementById("btnPlayGo");
 const inputUrl = document.getElementById("inputUrl");
 const elVideo = document.getElementById("elVideo");
+const imgPoster = document.getElementById("imgPoster");
+
+elVideo.addEventListener("playing", () => {
+    imgPoster.style.display = "none";
+});
+
 elVideo.addEventListener("error", (e) => {
     const error = elVideo.error;
     if (error) {
@@ -19,6 +25,7 @@ elVideo.addEventListener("error", (e) => {
 });
 
 function resetVideo() {
+    imgPoster.style.display = "block";
     frameQueue = [];
     isAppending = false;
     mediaSource = null;
