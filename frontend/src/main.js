@@ -8,6 +8,7 @@ let mediaSource, sourceBuffer;
 let frameQueue = [];
 let isAppending = false;
 
+const storageKeyURL = "playgo:ui:url";
 const btnPlayGo = document.getElementById("btnPlayGo");
 const inputUrl = document.getElementById("inputUrl");
 const elVideo = document.getElementById("elVideo");
@@ -23,6 +24,13 @@ elVideo.addEventListener("error", (e) => {
         console.error(`video error: code=${error.code}, message=${error.message}`, e);
     }
 });
+
+{
+    const lastURL = localStorage.getItem(storageKeyURL);
+    if (lastURL) {
+        inputUrl.value = lastURL;
+    }
+}
 
 function resetVideo() {
     imgPoster.style.display = "block";
@@ -51,6 +59,7 @@ window.OnPlayGo = function () {
             return;
         }
 
+        localStorage.setItem(storageKeyURL, url);
         btnPlayGo.disabled = true;
         inputUrl.disabled = true;
         PlayStream(url).then(ok => {
