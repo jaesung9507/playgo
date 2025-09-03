@@ -7,13 +7,15 @@
 </head>
 <body>
 <div id="app">
-    <div class="input-box">
-        <label>URL: <input type="text" class="input" id="inputUrl"></label>
-        <button class="btn" id="btnPlayGo" onclick="OnPlayGo();">PlayGo</button>
-    </div>
-    <div id="live">
-        <video id="elVideo" controls></video>
-        <img id="imgPoster" src="assets/poster.png"/>
+    <div class="app-container">
+        <div class="top-bar">
+            <input type="text" class="input" id="inputUrl" autocomplete="off"/>
+            <button class="button" id="btnPlayGo" onclick="OnPlayGo();">PlayGo</button>
+        </div>
+        <div class="video-container">
+            <video id="elVideo" controls></video>
+            <img id="imgPoster" src="assets/poster.png"/>
+        </div>
     </div>
 </div>
 <script src="./src/main.js" type="module"></script>
