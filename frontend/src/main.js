@@ -14,6 +14,13 @@ const inputUrl = document.getElementById("inputUrl");
 const elVideo = document.getElementById("elVideo");
 const imgPoster = document.getElementById("imgPoster");
 
+inputUrl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        window.OnPlayGo();
+    }
+});
+
 elVideo.addEventListener("playing", () => {
     imgPoster.style.display = "none";
 });
