@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/jaesung9507/playgo/stream/file"
 	"github.com/jaesung9507/playgo/stream/hls"
 	"github.com/jaesung9507/playgo/stream/http"
 	"github.com/jaesung9507/playgo/stream/rtmp"
@@ -31,6 +32,8 @@ func Dial(streamUrl string) (Client, error) {
 
 	var client Client
 	switch parsedUrl.Scheme {
+	case "file":
+		client = file.New(parsedUrl.Path)
 	case "rtsp", "rtsps":
 		client = rtsp.New(parsedUrl)
 	case "rtmp", "rtmps":
