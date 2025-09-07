@@ -23,6 +23,28 @@ func NewApp() *App {
 	return &App{close: make(chan bool)}
 }
 
+func (a *App) OpenFile() string {
+	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select File",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Videos (*.flv;*.mp4;*.ts)",
+				Pattern:     "*.flv;*.mp4;*.ts",
+			},
+		},
+	})
+	if err != nil {
+		a.MsgBox(err.Error())
+		return ""
+	}
+
+	if len(filePath) > 0 {
+		filePath = "file://" + filePath
+	}
+
+	return filePath
+}
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {

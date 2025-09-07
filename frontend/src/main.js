@@ -1,7 +1,7 @@
 import './style.css';
 import './app.css';
 
-import {PlayStream, CloseStream} from '../wailsjs/go/main/App';
+import {PlayStream, CloseStream, OpenFile} from '../wailsjs/go/main/App';
 import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 
 let mediaSource, sourceBuffer;
@@ -13,6 +13,34 @@ const btnPlayGo = document.getElementById("btnPlayGo");
 const inputUrl = document.getElementById("inputUrl");
 const elVideo = document.getElementById("elVideo");
 const imgPoster = document.getElementById("imgPoster");
+const btnMenu = document.getElementById("btnMenu");
+const dropdownMenu = document.getElementById("dropdownMenu");
+const menuOpenFile = document.getElementById("menuOpenFile");
+
+btnMenu.addEventListener("click", () => {
+    dropdownMenu.classList.toggle("show");
+    btnMenu.classList.toggle("active");
+});
+
+window.addEventListener("click", (event) => {
+    if (!event.target.closest(".dropdown") || event.target.closest("a:not(.disabled)")) {
+        if (dropdownMenu.classList.contains("show")) {
+            dropdownMenu.classList.remove("show");
+            btnMenu.classList.remove("active");
+        }
+    }
+});
+
+menuOpenFile.addEventListener("click", () => {
+    if (!menuOpenFile.classList.contains("disabled")) {
+        OpenFile().then(filePath => {
+            if (filePath) {
+                inputUrl.value = filePath;
+                window.OnPlayGo();
+            }
+        });
+    }
+});
 
 inputUrl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -54,6 +82,7 @@ function resetVideo() {
     elVideo.load();
 
     inputUrl.disabled = false;
+    menuOpenFile.classList.remove("disabled");
     btnPlayGo.innerText = "PlayGo";
 }
 
@@ -69,9 +98,13 @@ window.OnPlayGo = function () {
         localStorage.setItem(storageKeyURL, url);
         btnPlayGo.disabled = true;
         inputUrl.disabled = true;
+        menuOpenFile.classList.add("disabled");
         PlayStream(url).then(ok => {
             btnPlayGo.disabled = false;
-             if (!ok) inputUrl.disabled = false;
+            if (!ok) {
+                inputUrl.disabled = false;
+                menuOpenFile.classList.remove("disabled");
+            }
         });
     }
 };

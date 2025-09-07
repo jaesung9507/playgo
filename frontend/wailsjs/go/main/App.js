@@ -10,6 +10,10 @@ export function MsgBox(arg1) {
   return window['go']['main']['App']['MsgBox'](arg1);
 }
 
+export function OpenFile() {
+  return window['go']['main']['App']['OpenFile']();
+}
+
 export function PlayStream(arg1) {
   return window['go']['main']['App']['PlayStream'](arg1);
 }
