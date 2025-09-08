@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"path/filepath"
 	rt "runtime"
 
 	"github.com/jaesung9507/playgo/stream"
@@ -39,7 +40,12 @@ func (a *App) OpenFile() string {
 	}
 
 	if len(filePath) > 0 {
-		filePath = "file://" + filePath
+		switch rt.GOOS {
+		case "windows":
+			filePath = "file:///" + filepath.ToSlash(filePath)
+		default:
+			filePath = "file://" + filePath
+		}
 	}
 
 	return filePath
@@ -49,7 +55,7 @@ func (a *App) OpenFile() string {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...interface{}) {
+	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...any) {
 		a.streamLoop()
 	})
 }

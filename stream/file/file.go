@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
@@ -22,9 +23,16 @@ type LocalFile struct {
 	packetQueue chan *av.Packet
 }
 
-func New(filepath string) *LocalFile {
+func New(filePath string) *LocalFile {
+	switch runtime.GOOS {
+	case "windows":
+		if len(filePath) > 0 && filePath[0] == '/' {
+			filePath = filepath.FromSlash(filePath[1:])
+		}
+	}
+
 	return &LocalFile{
-		path:        filepath,
+		path:        filePath,
 		signal:      make(chan any),
 		packetQueue: make(chan *av.Packet),
 	}
