@@ -7,9 +7,11 @@ import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 let mediaSource, sourceBuffer;
 let frameQueue = [];
 let isAppending = false;
+let isReconnecting = false;
 
 const storageKeyURL = "playgo:ui:url";
 const btnPlayGo = document.getElementById("btnPlayGo");
+const btnReconnect = document.getElementById("btnReconnect");
 const inputUrl = document.getElementById("inputUrl");
 const elVideo = document.getElementById("elVideo");
 const imgPoster = document.getElementById("imgPoster");
@@ -20,6 +22,11 @@ const menuOpenFile = document.getElementById("menuOpenFile");
 btnMenu.addEventListener("click", () => {
     dropdownMenu.classList.toggle("show");
     btnMenu.classList.toggle("active");
+});
+
+btnReconnect.addEventListener("click", () => {
+    isReconnecting = true;
+    CloseStream();
 });
 
 window.addEventListener("click", (event) => {
@@ -84,6 +91,7 @@ function resetVideo() {
     inputUrl.disabled = false;
     menuOpenFile.classList.remove("disabled");
     btnPlayGo.innerText = "PlayGo";
+    btnReconnect.disabled = true;
 }
 
 window.OnPlayGo = function () {
@@ -111,6 +119,7 @@ window.OnPlayGo = function () {
 
 EventsOn("OnInit", function (meta, init) {
     btnPlayGo.innerText = "Stop";
+    btnReconnect.disabled = false;
     mediaSource = new MediaSource();
     elVideo.src = window.URL.createObjectURL(mediaSource);
 
@@ -141,6 +150,10 @@ EventsOn("OnInit", function (meta, init) {
 EventsOn("OnStreamStop", () => {
     console.log("OnStreamStop");
     resetVideo();
+    if (isReconnecting) {
+        isReconnecting = false;
+        window.OnPlayGo();
+    }
 });
 
 EventsOn("OnFrame", function (frame) {
