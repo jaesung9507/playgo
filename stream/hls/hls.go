@@ -29,7 +29,7 @@ type HLSClient struct {
 func New(parsedUrl *url.URL) *HLSClient {
 	return &HLSClient{
 		url:         parsedUrl,
-		signal:      make(chan any),
+		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }

@@ -25,7 +25,7 @@ type RTMPClient struct {
 func New(parsedUrl *url.URL) *RTMPClient {
 	return &RTMPClient{
 		url:         parsedUrl,
-		signal:      make(chan any),
+		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }

@@ -33,7 +33,7 @@ func New(filePath string) *LocalFile {
 
 	return &LocalFile{
 		path:        filePath,
-		signal:      make(chan any),
+		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }

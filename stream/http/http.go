@@ -30,7 +30,7 @@ type HTTPClient struct {
 func New(parsedUrl *url.URL) *HTTPClient {
 	return &HTTPClient{
 		url:         parsedUrl,
-		signal:      make(chan any),
+		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }

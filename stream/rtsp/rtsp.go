@@ -57,8 +57,8 @@ func (r *RTSPClient) PacketQueue() <-chan *av.Packet {
 	return r.client.OutgoingPacketQueue
 }
 
-func (r *RTSPClient) CloseCh() <-chan interface{} {
-	closeCh := make(chan interface{})
+func (r *RTSPClient) CloseCh() <-chan any {
+	closeCh := make(chan any, 1)
 	go func() {
 		for s := range r.client.Signals {
 			if s == rtspv2.SignalStreamRTPStop {
