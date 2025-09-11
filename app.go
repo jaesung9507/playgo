@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	rt "runtime"
+	"sync"
 
 	"github.com/jaesung9507/playgo/stream"
 
@@ -16,12 +18,14 @@ type App struct {
 	ctx          context.Context
 	streamClient stream.Client
 	mp4Muxer     *mp4f.Muxer
-	close        chan bool
+	streamCtx    context.Context
+	cancel       context.CancelFunc
+	wg           sync.WaitGroup
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{close: make(chan bool)}
+	return &App{}
 }
 
 func (a *App) OpenFile() string {
@@ -56,6 +60,7 @@ func (a *App) OpenFile() string {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...any) {
+		a.wg.Add(1)
 		a.streamLoop()
 	})
 }
@@ -69,8 +74,13 @@ func (a *App) MsgBox(msg string) {
 }
 
 func (a *App) CloseStream() {
+	if a.cancel != nil {
+		a.cancel()
+		a.cancel = nil
+	}
+	a.wg.Wait()
+
 	if a.streamClient != nil {
-		a.close <- true
 		a.streamClient.Close()
 		a.streamClient = nil
 	}
@@ -86,11 +96,12 @@ func (a *App) initStream(client stream.Client, muxer *mp4f.Muxer) {
 }
 
 func (a *App) streamLoop() {
+	defer a.wg.Done()
 	if a.streamClient != nil && a.mp4Muxer != nil {
 		defer runtime.EventsEmit(a.ctx, "OnStreamStop")
 		for {
 			select {
-			case <-a.close:
+			case <-a.streamCtx.Done():
 				return
 			case <-a.streamClient.CloseCh():
 				return
@@ -110,16 +121,21 @@ func (a *App) streamLoop() {
 }
 
 func (a *App) PlayStream(url string) bool {
-	client, err := stream.Dial(url)
+	a.streamCtx, a.cancel = context.WithCancel(a.ctx)
+
+	client, err := stream.Dial(a.streamCtx, url)
 	if err != nil {
-		a.MsgBox(err.Error())
+		if !errors.Is(err, context.Canceled) {
+			a.MsgBox(err.Error())
+		}
 		return false
 	}
 
-	codecData, err := client.CodecData()
+	codecData, err := stream.CodecData(a.streamCtx, client)
 	if err != nil {
-		client.Close()
-		a.MsgBox(err.Error())
+		if !errors.Is(err, context.Canceled) {
+			a.MsgBox(err.Error())
+		}
 		return false
 	}
 

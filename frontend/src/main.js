@@ -95,7 +95,7 @@ function resetVideo() {
 }
 
 window.OnPlayGo = function () {
-    if (btnPlayGo.innerText === "Stop") {
+    if (btnPlayGo.innerText !== "PlayGo") {
         CloseStream();
     } else {
         const url = inputUrl.value;
@@ -104,12 +104,12 @@ window.OnPlayGo = function () {
         }
 
         localStorage.setItem(storageKeyURL, url);
-        btnPlayGo.disabled = true;
+        btnPlayGo.innerText = "Cancel";
         inputUrl.disabled = true;
         menuOpenFile.classList.add("disabled");
         PlayStream(url).then(ok => {
-            btnPlayGo.disabled = false;
             if (!ok) {
+                btnPlayGo.innerText = "PlayGo";
                 inputUrl.disabled = false;
                 menuOpenFile.classList.remove("disabled");
             }
@@ -177,7 +177,7 @@ function appendNextFrame() {
 
     isAppending = true;
     const frame = frameQueue.shift();
-    
+
     appendFrameData(frame);
 }
 

@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"path"
@@ -24,7 +25,7 @@ type Client interface {
 	CloseCh() <-chan any
 }
 
-func Dial(streamUrl string) (Client, error) {
+func Dial(ctx context.Context, streamUrl string) (Client, error) {
 	parsedUrl, err := url.Parse(streamUrl)
 	if err != nil {
 		return nil, err
@@ -51,9 +52,49 @@ func Dial(streamUrl string) (Client, error) {
 		return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
 	}
 
-	if err = client.Dial(); err != nil {
-		return nil, err
+	ch := make(chan error, 1)
+	go func() {
+		ch <- client.Dial()
+	}()
+
+	select {
+	case <-ctx.Done():
+		go func() {
+			<-ch
+			client.Close()
+		}()
+		return nil, context.Canceled
+	case err := <-ch:
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return client, nil
+}
+
+func CodecData(ctx context.Context, client Client) (codecs []av.CodecData, err error) {
+	defer func() {
+		if err != nil {
+			client.Close()
+		}
+	}()
+
+	ch := make(chan error, 1)
+	go func() {
+		var err error
+		codecs, err = client.CodecData()
+		ch <- err
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, context.Canceled
+	case err := <-ch:
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return codecs, nil
 }
