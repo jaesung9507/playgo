@@ -1,7 +1,7 @@
 import './style.css';
 import './app.css';
 
-import {PlayStream, CloseStream, OpenFile} from '../wailsjs/go/main/App';
+import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop} from '../wailsjs/go/main/App';
 import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 
 let mediaSource, sourceBuffer;
@@ -10,6 +10,8 @@ let isAppending = false;
 let isReconnecting = false;
 
 const storageKeyURL = "playgo:ui:url";
+const storageKeyAlwaysOnTop = "playgo:setting:alwaysOnTop";
+
 const btnPlayGo = document.getElementById("btnPlayGo");
 const btnReconnect = document.getElementById("btnReconnect");
 const inputUrl = document.getElementById("inputUrl");
@@ -18,6 +20,20 @@ const imgPoster = document.getElementById("imgPoster");
 const btnMenu = document.getElementById("btnMenu");
 const dropdownMenu = document.getElementById("dropdownMenu");
 const menuOpenFile = document.getElementById("menuOpenFile");
+const menuAlwaysOnTop = document.getElementById("menuAlwaysOnTop");
+
+function initialize() {
+    const lastURL = localStorage.getItem(storageKeyURL);
+    if (lastURL) {
+        inputUrl.value = lastURL;
+    }
+
+    const isAlwaysOnTop = localStorage.getItem(storageKeyAlwaysOnTop);
+    if (isAlwaysOnTop === "true") {
+        SetAlwaysOnTop(true);
+        menuAlwaysOnTop.classList.add("checked");
+    }
+}
 
 btnMenu.addEventListener("click", () => {
     dropdownMenu.classList.toggle("show");
@@ -49,6 +65,13 @@ menuOpenFile.addEventListener("click", () => {
     }
 });
 
+menuAlwaysOnTop.addEventListener("click", () => {
+    const isAlwaysOnTop = !menuAlwaysOnTop.classList.contains("checked");
+    SetAlwaysOnTop(isAlwaysOnTop);
+    menuAlwaysOnTop.classList.toggle("checked", isAlwaysOnTop);
+    localStorage.setItem(storageKeyAlwaysOnTop, isAlwaysOnTop);
+});
+
 inputUrl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -66,13 +89,6 @@ elVideo.addEventListener("error", (e) => {
         console.error(`video error: code=${error.code}, message=${error.message}`, e);
     }
 });
-
-{
-    const lastURL = localStorage.getItem(storageKeyURL);
-    if (lastURL) {
-        inputUrl.value = lastURL;
-    }
-}
 
 function resetVideo() {
     imgPoster.style.display = "block";
@@ -197,3 +213,5 @@ function onUpdateEnd() {
     }
     appendNextFrame();
 }
+
+initialize();

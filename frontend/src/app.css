@@ -125,11 +125,13 @@
 }
 
 .dropdown-content a {
+    position: relative;
     color: #e8eaed;
-    padding: 12px 16px;
+    padding: 10px 10px 10px 30px;
     text-decoration: none;
     display: block;
     text-align: left;
+    font-size: 0.8rem;
 }
 
 .dropdown-content a:not(.disabled):hover {
@@ -139,4 +141,16 @@
 .dropdown-content a.disabled {
     color: #5f6368;
     cursor: not-allowed;
+}
+
+.checkmark {
+    display: none;
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.dropdown-content a.checked .checkmark {
+    display: inline;
 }

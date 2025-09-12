@@ -8,3 +8,5 @@ export function MsgBox(arg1:string):Promise<void>;
 export function OpenFile():Promise<string>;
 
 export function PlayStream(arg1:string):Promise<boolean>;
+
+export function SetAlwaysOnTop(arg1:boolean):Promise<void>;

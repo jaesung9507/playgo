@@ -28,6 +28,10 @@ func NewApp() *App {
 	return &App{}
 }
 
+func (a *App) SetAlwaysOnTop(b bool) {
+	runtime.WindowSetAlwaysOnTop(a.ctx, b)
+}
+
 func (a *App) OpenFile() string {
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select File",
