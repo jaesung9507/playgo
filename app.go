@@ -34,7 +34,7 @@ func (a *App) SetAlwaysOnTop(b bool) {
 
 func (a *App) OpenFile() string {
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select File",
+		Title: "Open File",
 		Filters: []runtime.FileFilter{
 			{
 				DisplayName: "Videos (*.flv;*.mp4;*.ts)",
@@ -57,6 +57,10 @@ func (a *App) OpenFile() string {
 	}
 
 	return filePath
+}
+
+func (a *App) Quit() {
+	runtime.Quit(a.ctx)
 }
 
 // startup is called when the app starts. The context is saved

@@ -18,6 +18,10 @@ export function PlayStream(arg1) {
   return window['go']['main']['App']['PlayStream'](arg1);
 }
 
+export function Quit() {
+  return window['go']['main']['App']['Quit']();
+}
+
 export function SetAlwaysOnTop(arg1) {
   return window['go']['main']['App']['SetAlwaysOnTop'](arg1);
 }

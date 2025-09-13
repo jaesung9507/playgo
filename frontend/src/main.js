@@ -1,7 +1,7 @@
 import './style.css';
 import './app.css';
 
-import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop} from '../wailsjs/go/main/App';
+import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, Quit} from '../wailsjs/go/main/App';
 import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 
 let mediaSource, sourceBuffer;
@@ -21,6 +21,7 @@ const btnMenu = document.getElementById("btnMenu");
 const dropdownMenu = document.getElementById("dropdownMenu");
 const menuOpenFile = document.getElementById("menuOpenFile");
 const menuAlwaysOnTop = document.getElementById("menuAlwaysOnTop");
+const menuQuit = document.getElementById("menuQuit");
 
 function initialize() {
     const lastURL = localStorage.getItem(storageKeyURL);
@@ -71,6 +72,8 @@ menuAlwaysOnTop.addEventListener("click", () => {
     menuAlwaysOnTop.classList.toggle("checked", isAlwaysOnTop);
     localStorage.setItem(storageKeyAlwaysOnTop, isAlwaysOnTop);
 });
+
+menuQuit.addEventListener("click", Quit);
 
 inputUrl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {

@@ -9,4 +9,6 @@ export function OpenFile():Promise<string>;
 
 export function PlayStream(arg1:string):Promise<boolean>;
 
+export function Quit():Promise<void>;
+
 export function SetAlwaysOnTop(arg1:boolean):Promise<void>;
