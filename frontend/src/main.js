@@ -36,6 +36,31 @@ function initialize() {
     }
 }
 
+function onPlayGo() {
+    if (btnPlayGo.innerText !== "PlayGo") {
+        CloseStream();
+    } else {
+        const url = inputUrl.value;
+        if (!url) {
+            return;
+        }
+
+        localStorage.setItem(storageKeyURL, url);
+        btnPlayGo.innerText = "Cancel";
+        inputUrl.disabled = true;
+        menuOpenFile.classList.add("disabled");
+        PlayStream(url).then(ok => {
+            if (!ok) {
+                btnPlayGo.innerText = "PlayGo";
+                inputUrl.disabled = false;
+                menuOpenFile.classList.remove("disabled");
+            }
+        });
+    }
+}
+
+btnPlayGo.addEventListener("click", onPlayGo);
+
 btnMenu.addEventListener("click", () => {
     dropdownMenu.classList.toggle("show");
     btnMenu.classList.toggle("active");
@@ -60,7 +85,7 @@ menuOpenFile.addEventListener("click", () => {
         OpenFile().then(filePath => {
             if (filePath) {
                 inputUrl.value = filePath;
-                window.OnPlayGo();
+                onPlayGo();
             }
         });
     }
@@ -78,7 +103,7 @@ menuQuit.addEventListener("click", Quit);
 inputUrl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
-        window.OnPlayGo();
+        onPlayGo();
     }
 });
 
@@ -112,29 +137,6 @@ function resetVideo() {
     btnPlayGo.innerText = "PlayGo";
     btnReconnect.disabled = true;
 }
-
-window.OnPlayGo = function () {
-    if (btnPlayGo.innerText !== "PlayGo") {
-        CloseStream();
-    } else {
-        const url = inputUrl.value;
-        if (!url) {
-            return;
-        }
-
-        localStorage.setItem(storageKeyURL, url);
-        btnPlayGo.innerText = "Cancel";
-        inputUrl.disabled = true;
-        menuOpenFile.classList.add("disabled");
-        PlayStream(url).then(ok => {
-            if (!ok) {
-                btnPlayGo.innerText = "PlayGo";
-                inputUrl.disabled = false;
-                menuOpenFile.classList.remove("disabled");
-            }
-        });
-    }
-};
 
 EventsOn("OnInit", function (meta, init) {
     btnPlayGo.innerText = "Stop";
@@ -171,7 +173,7 @@ EventsOn("OnStreamStop", () => {
     resetVideo();
     if (isReconnecting) {
         isReconnecting = false;
-        window.OnPlayGo();
+        onPlayGo();
     }
 });
 
