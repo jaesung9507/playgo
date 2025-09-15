@@ -12,11 +12,16 @@
   - HTTP-MP4 / HTTPS-MP4
   - HLS-TS / HLS-fMP4
   - SRT
+- Supports local file playback:
+  - FLV
+  - TS
+  - MP4
 - Supports codecs:
   - H264
   - AAC
 - Cross-platform support (Windows, macOS, Linux)
 - Simple and intuitive user interface
+- Always on top
 
 ## Build
 To build the application, make sure [Wails](https://wails.io/) is installed:
