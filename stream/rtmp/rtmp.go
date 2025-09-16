@@ -39,7 +39,7 @@ func (r *RTMPClient) Dial() error {
 		}
 	}
 
-	conn, err := net.DialTimeout("tcp", r.url.Host, 3*time.Second)
+	conn, err := net.Dial("tcp", r.url.Host)
 	if err != nil {
 		return err
 	}
