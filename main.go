@@ -6,6 +6,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
@@ -36,6 +37,9 @@ func main() {
 				Message: "© 2023-2025 Jae-Sung",
 				Icon:    icon,
 			},
+		},
+		Linux: &linux.Options{
+			Icon: icon,
 		},
 	})
 
