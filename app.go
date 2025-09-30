@@ -81,8 +81,6 @@ func (a *App) startup(ctx context.Context) {
 
 		runtime.WindowSetSize(ctx, width, height)
 		runtime.WindowCenter(ctx)
-	} else {
-		runtime.WindowSetSize(ctx, 1024, 768)
 	}
 
 	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...any) {
