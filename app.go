@@ -67,6 +67,24 @@ func (a *App) Quit() {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	if screens, _ := runtime.ScreenGetAll(ctx); len(screens) > 0 {
+		primaryScreen := screens[0]
+
+		var width, height int
+		if primaryScreen.Size.Width >= primaryScreen.Size.Height {
+			width = min(int(float64(primaryScreen.Size.Width)*0.5), 1024)
+		} else {
+			width = min(int(float64(primaryScreen.Size.Height)*0.5), 1024)
+		}
+		height = int(float64(width) * 0.75)
+
+		runtime.WindowSetSize(ctx, width, height)
+		runtime.WindowCenter(ctx)
+	} else {
+		runtime.WindowSetSize(ctx, 1024, 768)
+	}
+
 	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...any) {
 		a.wg.Add(1)
 		a.streamLoop()
