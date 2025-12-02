@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/jaesung9507/playgo/stream/file"
-	"github.com/jaesung9507/playgo/stream/hls"
-	"github.com/jaesung9507/playgo/stream/http"
-	"github.com/jaesung9507/playgo/stream/rtmp"
-	"github.com/jaesung9507/playgo/stream/rtsp"
-	"github.com/jaesung9507/playgo/stream/srt"
+	"github.com/jaesung9507/playgo/stream/platform/youtube"
+	"github.com/jaesung9507/playgo/stream/protocol/hls"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/rtmp"
+	"github.com/jaesung9507/playgo/stream/protocol/rtsp"
+	"github.com/jaesung9507/playgo/stream/protocol/srt"
 
 	"github.com/deepch/vdk/av"
 )
@@ -32,24 +33,29 @@ func Dial(ctx context.Context, streamUrl string) (Client, error) {
 	}
 
 	var client Client
-	switch parsedUrl.Scheme {
-	case "file":
-		client = file.New(parsedUrl.Path)
-	case "rtsp", "rtsps":
-		client = rtsp.New(parsedUrl)
-	case "rtmp", "rtmps":
-		client = rtmp.New(parsedUrl)
-	case "http", "https":
-		switch filepath.Ext(path.Base(parsedUrl.Path)) {
-		case ".m3u8":
-			client = hls.New(parsedUrl)
-		default:
-			client = http.New(parsedUrl)
-		}
-	case "srt":
-		client = srt.New(parsedUrl)
+	switch parsedUrl.Host {
+	case "www.youtube.com", "youtu.be":
+		client = youtube.New(streamUrl)
 	default:
-		return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
+		switch parsedUrl.Scheme {
+		case "file":
+			client = file.New(parsedUrl.Path)
+		case "rtsp", "rtsps":
+			client = rtsp.New(parsedUrl)
+		case "rtmp", "rtmps":
+			client = rtmp.New(parsedUrl)
+		case "http", "https":
+			switch filepath.Ext(path.Base(parsedUrl.Path)) {
+			case ".m3u8":
+				client = hls.New(parsedUrl)
+			default:
+				client = http.New(parsedUrl)
+			}
+		case "srt":
+			client = srt.New(parsedUrl)
+		default:
+			return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
+		}
 	}
 
 	ch := make(chan error, 1)

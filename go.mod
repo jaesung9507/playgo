@@ -7,6 +7,7 @@ require (
 	github.com/bluenviron/mediacommon/v2 v2.4.0
 	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
+	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )
 
@@ -16,8 +17,13 @@ require (
 	github.com/asticode/go-astits v1.13.0 // indirect
 	github.com/benburkert/openpgp v0.0.0-20160410205803-c2471f86866c // indirect
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/bitly/go-simplejson v0.5.1 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/godbus/dbus/v5 v5.2.0 // indirect
+	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect

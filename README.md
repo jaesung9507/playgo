@@ -16,6 +16,8 @@
   - FLV
   - TS
   - MP4
+- Supports platforms:
+  - YouTube
 - Supports codecs:
   - H264
   - AAC
