@@ -26,35 +26,35 @@ type Client interface {
 	CloseCh() <-chan any
 }
 
-func Dial(ctx context.Context, streamUrl string) (Client, error) {
-	parsedUrl, err := url.Parse(streamUrl)
+func Dial(ctx context.Context, streamURL string) (Client, error) {
+	parsedURL, err := url.Parse(streamURL)
 	if err != nil {
 		return nil, err
 	}
 
 	var client Client
-	switch parsedUrl.Host {
+	switch parsedURL.Host {
 	case "www.youtube.com", "youtu.be":
-		client = youtube.New(streamUrl)
+		client = youtube.New(parsedURL)
 	default:
-		switch parsedUrl.Scheme {
+		switch parsedURL.Scheme {
 		case "file":
-			client = file.New(parsedUrl.Path)
+			client = file.New(parsedURL.Path)
 		case "rtsp", "rtsps":
-			client = rtsp.New(parsedUrl)
+			client = rtsp.New(parsedURL)
 		case "rtmp", "rtmps":
-			client = rtmp.New(parsedUrl)
+			client = rtmp.New(parsedURL)
 		case "http", "https":
-			switch filepath.Ext(path.Base(parsedUrl.Path)) {
+			switch filepath.Ext(path.Base(parsedURL.Path)) {
 			case ".m3u8":
-				client = hls.New(parsedUrl)
+				client = hls.New(parsedURL)
 			default:
-				client = http.New(parsedUrl)
+				client = http.New(parsedURL)
 			}
 		case "srt":
-			client = srt.New(parsedUrl)
+			client = srt.New(parsedURL)
 		default:
-			return nil, fmt.Errorf("unsupported protocol: %s", parsedUrl.Scheme)
+			return nil, fmt.Errorf("unsupported protocol: %s", parsedURL.Scheme)
 		}
 	}
 

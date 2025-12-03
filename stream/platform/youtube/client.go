@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/jaesung9507/playgo/stream/protocol/hls"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/mp4"
@@ -13,15 +18,17 @@ import (
 )
 
 type Client struct {
-	url         string
+	url         *url.URL
 	demuxer     *mp4.Demuxer
 	signal      chan any
 	packetQueue chan *av.Packet
+
+	hlsClient *hls.HLSClient
 }
 
-func New(url string) *Client {
+func New(parsedURL *url.URL) *Client {
 	return &Client{
-		url:         url,
+		url:         parsedURL,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
@@ -38,9 +45,25 @@ func (c *Client) Dial() error {
 		},
 	}
 
-	video, err := client.GetVideo(c.url)
+	youtubeURL := c.url.String()
+	if strings.HasPrefix(c.url.Path, "/live/") {
+		videoID := c.url.Path[6:]
+		youtubeURL = fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+	}
+
+	video, err := client.GetVideo(youtubeURL)
 	if err != nil {
 		return err
+	}
+
+	if len(video.HLSManifestURL) > 0 {
+		hlsURL, err := url.Parse(video.HLSManifestURL)
+		if err != nil {
+			return err
+		}
+
+		c.hlsClient = hls.New(hlsURL)
+		return c.hlsClient.Dial()
 	}
 
 	formats := video.Formats.WithAudioChannels()
@@ -61,9 +84,16 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) Close() {
+	if c.hlsClient != nil {
+		c.hlsClient.Close()
+	}
 }
 
 func (c *Client) CodecData() ([]av.CodecData, error) {
+	if c.hlsClient != nil {
+		return c.hlsClient.CodecData()
+	}
+
 	streams, err := c.demuxer.Streams()
 	if err == nil {
 		go func() {
@@ -83,9 +113,15 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 }
 
 func (c *Client) PacketQueue() <-chan *av.Packet {
+	if c.hlsClient != nil {
+		return c.hlsClient.PacketQueue()
+	}
 	return c.packetQueue
 }
 
 func (c *Client) CloseCh() <-chan any {
+	if c.hlsClient != nil {
+		return c.hlsClient.CloseCh()
+	}
 	return c.signal
 }
