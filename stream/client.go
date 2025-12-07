@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/jaesung9507/playgo/stream/file"
+	"github.com/jaesung9507/playgo/stream/platform/chzzk"
 	"github.com/jaesung9507/playgo/stream/platform/youtube"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
@@ -34,6 +35,8 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 
 	var client Client
 	switch parsedURL.Host {
+	case "chzzk.naver.com":
+		client = chzzk.New(parsedURL)
 	case "www.youtube.com", "youtu.be":
 		client = youtube.New(parsedURL)
 	default:

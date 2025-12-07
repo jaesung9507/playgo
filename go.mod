@@ -3,18 +3,19 @@ module github.com/jaesung9507/playgo
 go 1.25.0
 
 require (
-	github.com/bluenviron/gohlslib/v2 v2.2.2
-	github.com/bluenviron/mediacommon/v2 v2.4.0
+	github.com/bluenviron/gohlslib/v2 v2.2.4
+	github.com/bluenviron/mediacommon/v2 v2.5.3
 	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
+	github.com/jaesung9507/chzzk v0.1.0
 	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )
 
 require (
 	github.com/abema/go-mp4 v1.4.1 // indirect
-	github.com/asticode/go-astikit v0.30.0 // indirect
-	github.com/asticode/go-astits v1.13.0 // indirect
+	github.com/asticode/go-astikit v0.57.1 // indirect
+	github.com/asticode/go-astits v1.14.0 // indirect
 	github.com/benburkert/openpgp v0.0.0-20160410205803-c2471f86866c // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect

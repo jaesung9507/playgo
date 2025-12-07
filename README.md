@@ -18,6 +18,7 @@
   - MP4
 - Supports platforms:
   - YouTube
+  - CHZZK
 - Supports codecs:
   - H264
   - AAC
