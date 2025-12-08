@@ -46,8 +46,7 @@ func (c *Client) Dial() error {
 	}
 
 	youtubeURL := c.url.String()
-	if strings.HasPrefix(c.url.Path, "/live/") {
-		videoID := c.url.Path[6:]
+	if videoID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
 		youtubeURL = fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
 	}
 

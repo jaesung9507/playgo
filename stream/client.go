@@ -37,7 +37,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 	switch parsedURL.Host {
 	case "chzzk.naver.com":
 		client = chzzk.New(parsedURL)
-	case "www.youtube.com", "youtu.be":
+	case "www.youtube.com", "music.youtube.com", "youtu.be", "www.youtubekids.com":
 		client = youtube.New(parsedURL)
 	default:
 		switch parsedURL.Scheme {
