@@ -65,7 +65,7 @@ func (c *Client) Dial() error {
 		return c.hlsClient.Dial()
 	}
 
-	formats := video.Formats.WithAudioChannels()
+	formats := video.Formats.WithAudioChannels().Type("video/mp4")
 	stream, _, err := client.GetStream(video, &formats[0])
 	if err != nil {
 		return err
