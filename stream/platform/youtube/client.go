@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 
@@ -96,6 +97,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 	streams, err := c.demuxer.Streams()
 	if err == nil {
 		go func() {
+			var baseCtsOffset time.Duration
 			for {
 				packet, err := c.demuxer.ReadPacket()
 				if err != nil {
@@ -104,6 +106,17 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 					}
 					return
 				}
+
+				// WORKAROUND: Correct invalid cts values from the vdk mp4 demuxer that cause decode failures on macOS
+				if packet.IsKeyFrame && packet.CompositionTime > 0 {
+					baseCtsOffset = packet.CompositionTime
+				} else if baseCtsOffset > 0 && packet.CompositionTime == 0 {
+					baseCtsOffset = 0
+				}
+				if baseCtsOffset > 0 {
+					packet.CompositionTime -= baseCtsOffset
+				}
+
 				c.packetQueue <- &packet
 			}
 		}()
