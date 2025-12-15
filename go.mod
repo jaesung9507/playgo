@@ -7,7 +7,7 @@ require (
 	github.com/bluenviron/mediacommon/v2 v2.5.3
 	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
-	github.com/jaesung9507/chzzk v0.1.0
+	github.com/jaesung9507/chzzk v0.2.0
 	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )

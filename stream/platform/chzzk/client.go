@@ -9,14 +9,16 @@ import (
 	"strings"
 
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
+	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/deepch/vdk/av"
 	"github.com/jaesung9507/chzzk"
 )
 
 type Client struct {
-	url       *url.URL
-	hlsClient *hls.HLSClient
+	url        *url.URL
+	hlsClient  *hls.HLSClient
+	httpClient *httpStream.HTTPClient
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -34,7 +36,7 @@ func (c *Client) Dial() error {
 		},
 	})
 
-	var hlsURL *url.URL
+	var hlsURL, mp4URL *url.URL
 	if channelID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
 		liveDetail, err := client.GetLiveDetail(channelID)
 		if err != nil {
@@ -55,20 +57,44 @@ func (c *Client) Dial() error {
 		if err != nil {
 			return err
 		}
+	} else if clipID, ok := strings.CutPrefix(c.url.Path, "/clips/"); ok {
+		clipDetail, err := client.GetClipDetail(clipID)
+		if err != nil {
+			return err
+		}
+
+		mp4URLs, err := client.GetClipMP4URL(clipDetail.Content.ClipUID, clipDetail.Content.VideoID)
+		if err != nil {
+			return err
+		}
+
+		for _, rawURL := range mp4URLs {
+			mp4URL, err = url.Parse(rawURL)
+			if err != nil {
+				return err
+			}
+			break
+		}
 	}
 
-	if hlsURL == nil {
-		return errors.New("not supported url")
+	if hlsURL != nil {
+		c.hlsClient = hls.New(hlsURL)
+		return c.hlsClient.Dial()
+	} else if mp4URL != nil {
+		c.httpClient = httpStream.New(mp4URL)
+		return c.httpClient.Dial()
 	}
 
-	c.hlsClient = hls.New(hlsURL)
-
-	return c.hlsClient.Dial()
+	return errors.New("not supported url")
 }
 
 func (c *Client) Close() {
 	if c.hlsClient != nil {
 		c.hlsClient.Close()
+	}
+
+	if c.httpClient != nil {
+		c.httpClient.Close()
 	}
 }
 
@@ -76,6 +102,11 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 	if c.hlsClient != nil {
 		return c.hlsClient.CodecData()
 	}
+
+	if c.httpClient != nil {
+		return c.httpClient.CodecData()
+	}
+
 	return nil, errors.New("not supported")
 }
 
@@ -83,6 +114,11 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 	if c.hlsClient != nil {
 		return c.hlsClient.PacketQueue()
 	}
+
+	if c.httpClient != nil {
+		return c.httpClient.PacketQueue()
+	}
+
 	return nil
 }
 
@@ -90,5 +126,10 @@ func (c *Client) CloseCh() <-chan any {
 	if c.hlsClient != nil {
 		return c.hlsClient.CloseCh()
 	}
+
+	if c.httpClient != nil {
+		return c.httpClient.CloseCh()
+	}
+
 	return nil
 }
