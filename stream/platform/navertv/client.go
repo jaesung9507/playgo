@@ -1,4 +1,4 @@
-package chzzk
+package navertv
 
 import (
 	"crypto/tls"
@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/deepch/vdk/av"
-	"github.com/jaesung9507/nvver/chzzk"
+	"github.com/jaesung9507/nvver/tv"
 )
 
 type Client struct {
@@ -28,7 +29,7 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	client := chzzk.NewClient(&http.Client{
+	client := tv.NewClient(&http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -37,33 +38,38 @@ func (c *Client) Dial() error {
 	})
 
 	var hlsURL, mp4URL *url.URL
-	if channelID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
-		liveDetail, err := client.GetLiveDetail(channelID)
+	if liveNo, ok := strings.CutPrefix(c.url.Path, "/l/"); ok {
+		liveNo, err := strconv.ParseInt(liveNo, 10, 64)
 		if err != nil {
 			return err
 		}
 
-		playback, err := liveDetail.GetLivePlayback()
+		playback, err := client.GetLivePlayback(liveNo)
 		if err != nil {
 			return err
 		}
 
 		rawURL := playback.GetHLSPath()
 		if len(rawURL) <= 0 {
-			return fmt.Errorf("status: %s", liveDetail.Content.Status)
+			return fmt.Errorf("not found hls path: %v", playback)
 		}
 
 		hlsURL, err = url.Parse(rawURL)
 		if err != nil {
 			return err
 		}
-	} else if clipID, ok := strings.CutPrefix(c.url.Path, "/clips/"); ok {
-		clipDetail, err := client.GetClipDetail(clipID)
+	} else if clipNo, ok := strings.CutPrefix(c.url.Path, "/h/"); ok {
+		clipNo, err := strconv.ParseInt(clipNo, 10, 64)
 		if err != nil {
 			return err
 		}
 
-		mp4URLs, err := client.GetClipMP4URL(clipDetail.Content.ClipUID, clipDetail.Content.VideoID)
+		videoID, err := client.GetClipVideoID(clipNo)
+		if err != nil {
+			return err
+		}
+
+		mp4URLs, err := client.GetClipMP4URL(videoID)
 		if err != nil {
 			return err
 		}

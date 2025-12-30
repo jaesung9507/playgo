@@ -35,6 +35,8 @@ The following platforms are supported via direct URL input.
 | YouTube | Music | https://music.youtube.com/watch?v={videoID} |
 | CHZZK | Live | https://chzzk.naver.com/live/{channelID} |
 | CHZZK | Clip | https://chzzk.naver.com/clips/{clipID} |
+| NAVER TV | Live | https://tv.naver.com/l/{liveNo} |
+| NAVER TV | Clip | https://tv.naver.com/h/{clipNo} |
 
 ### General Features
 - Cross-platform support (Windows, macOS, Linux)

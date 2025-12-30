@@ -9,6 +9,7 @@ import (
 
 	"github.com/jaesung9507/playgo/stream/file"
 	"github.com/jaesung9507/playgo/stream/platform/chzzk"
+	"github.com/jaesung9507/playgo/stream/platform/navertv"
 	"github.com/jaesung9507/playgo/stream/platform/youtube"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
@@ -34,31 +35,33 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 	}
 
 	var client Client
-	switch parsedURL.Host {
-	case "chzzk.naver.com":
-		client = chzzk.New(parsedURL)
-	case "www.youtube.com", "music.youtube.com", "youtu.be", "www.youtubekids.com":
-		client = youtube.New(parsedURL)
-	default:
-		switch parsedURL.Scheme {
-		case "file":
-			client = file.New(parsedURL.Path)
-		case "rtsp", "rtsps":
-			client = rtsp.New(parsedURL)
-		case "rtmp", "rtmps":
-			client = rtmp.New(parsedURL)
-		case "http", "https":
+	switch parsedURL.Scheme {
+	case "file":
+		client = file.New(parsedURL.Path)
+	case "rtsp", "rtsps":
+		client = rtsp.New(parsedURL)
+	case "rtmp", "rtmps":
+		client = rtmp.New(parsedURL)
+	case "http", "https":
+		switch parsedURL.Host {
+		case "chzzk.naver.com":
+			client = chzzk.New(parsedURL)
+		case "tv.naver.com":
+			client = navertv.New(parsedURL)
+		case "www.youtube.com", "music.youtube.com", "youtu.be", "www.youtubekids.com":
+			client = youtube.New(parsedURL)
+		default:
 			switch filepath.Ext(path.Base(parsedURL.Path)) {
 			case ".m3u8":
 				client = hls.New(parsedURL)
 			default:
 				client = http.New(parsedURL)
 			}
-		case "srt":
-			client = srt.New(parsedURL)
-		default:
-			return nil, fmt.Errorf("unsupported protocol: %s", parsedURL.Scheme)
 		}
+	case "srt":
+		client = srt.New(parsedURL)
+	default:
+		return nil, fmt.Errorf("unsupported protocol: %s", parsedURL.Scheme)
 	}
 
 	ch := make(chan error, 1)
