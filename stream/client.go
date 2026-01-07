@@ -10,6 +10,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/file"
 	"github.com/jaesung9507/playgo/stream/platform/chzzk"
 	"github.com/jaesung9507/playgo/stream/platform/navertv"
+	"github.com/jaesung9507/playgo/stream/platform/shoppinglive"
 	"github.com/jaesung9507/playgo/stream/platform/youtube"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
@@ -48,6 +49,8 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 			client = chzzk.New(parsedURL)
 		case "tv.naver.com":
 			client = navertv.New(parsedURL)
+		case "view.shoppinglive.naver.com":
+			client = shoppinglive.New(parsedURL)
 		case "www.youtube.com", "music.youtube.com", "youtu.be", "www.youtubekids.com":
 			client = youtube.New(parsedURL)
 		default:

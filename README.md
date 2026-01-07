@@ -37,6 +37,7 @@ The following platforms are supported via direct URL input.
 | CHZZK | Clip | https://chzzk.naver.com/clips/{clipID} |
 | NAVER TV | Live | https://tv.naver.com/l/{liveNo} |
 | NAVER TV | Clip | https://tv.naver.com/h/{clipNo} |
+| Shopping Live | Live | https://view.shoppinglive.naver.com/lives/{broadcastID} |
 
 ### General Features
 - Cross-platform support (Windows, macOS, Linux)
