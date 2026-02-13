@@ -125,7 +125,15 @@ func (h *HLSClient) Close() {
 }
 
 func (h *HLSClient) CodecData() ([]av.CodecData, error) {
-	<-h.signal
+	go func() {
+		h.signal <- h.client.Wait2()
+	}()
+
+	signal := <-h.signal
+	if err, ok := signal.(error); ok {
+		return nil, err
+	}
+
 	var codecs []av.CodecData
 	if h.h264Codec != nil && h.h264Codec.SPS != nil && h.h264Codec.PPS != nil {
 		h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(h.h264Codec.SPS, h.h264Codec.PPS)
@@ -147,10 +155,6 @@ func (h *HLSClient) CodecData() ([]av.CodecData, error) {
 		}
 		codecs = append(codecs, aacCodec)
 	}
-
-	go func() {
-		h.signal <- h.client.Wait2()
-	}()
 
 	return codecs, nil
 }

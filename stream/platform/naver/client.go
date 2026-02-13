@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -16,6 +19,7 @@ import (
 	"github.com/jaesung9507/nvver/chzzk"
 	"github.com/jaesung9507/nvver/shoppinglive"
 	"github.com/jaesung9507/nvver/tv"
+	"github.com/jaesung9507/nvver/webtoon"
 )
 
 type Client struct {
@@ -54,9 +58,9 @@ func (c *Client) Dial() error {
 				return err
 			}
 
-			rawURL := playback.GetHLSPath()
+			rawURL := playback.HLSPath()
 			if len(rawURL) <= 0 {
-				return fmt.Errorf("status: %s", liveDetail.Content.Status)
+				return fmt.Errorf("status: %s", liveDetail.Status)
 			}
 
 			hlsURL, err = url.Parse(rawURL)
@@ -69,7 +73,7 @@ func (c *Client) Dial() error {
 				return err
 			}
 
-			mp4URLs, err := client.GetClipMP4URL(clipDetail.Content.ClipUID, clipDetail.Content.VideoID)
+			mp4URLs, err := client.GetClipMP4URL(clipDetail.ClipUID, clipDetail.VideoID)
 			if err != nil {
 				return err
 			}
@@ -95,7 +99,7 @@ func (c *Client) Dial() error {
 				return err
 			}
 
-			rawURL := playback.GetHLSPath()
+			rawURL := playback.HLSPath()
 			if len(rawURL) <= 0 {
 				return fmt.Errorf("not found hls path: %v", playback)
 			}
@@ -141,7 +145,7 @@ func (c *Client) Dial() error {
 				return err
 			}
 
-			rawURL := playback.GetHLSPath()
+			rawURL := playback.HLSPath()
 			if len(rawURL) <= 0 {
 				return fmt.Errorf("not found hls path: %v", playback)
 			}
@@ -149,6 +153,42 @@ func (c *Client) Dial() error {
 			hlsURL, err = url.Parse(rawURL)
 			if err != nil {
 				return err
+			}
+		}
+	case "comic.naver.com":
+		httpClient.Jar, _ = cookiejar.New(nil)
+		client := webtoon.NewClient(httpClient)
+		if strings.HasPrefix(c.url.Path, "/cuts/") {
+			cutsID := c.url.Query().Get("id")
+			if len(cutsID) <= 0 {
+				return errors.New("not found cuts id")
+			}
+
+			token, err := client.GetCutsToken(cutsID)
+			if err != nil {
+				return err
+			}
+
+			cuts, err := client.GetCutsInfo(cutsID)
+			if err != nil {
+				return err
+			}
+
+			videoURL, err := client.GetCutsURL(cutsID, cuts.AssetID(), token)
+			if err != nil {
+				return err
+			}
+
+			for _, rawURL := range videoURL {
+				parsedURL, err := url.Parse(rawURL)
+				if err != nil {
+					continue
+				}
+
+				if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".mp4" {
+					mp4URL = parsedURL
+					break
+				}
 			}
 		}
 	}
