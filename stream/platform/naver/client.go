@@ -154,6 +154,39 @@ func (c *Client) Dial() error {
 			if err != nil {
 				return err
 			}
+		} else if shortClipID, ok := strings.CutPrefix(c.url.Path, "/shortclips/"); ok {
+			shortClipID, err := strconv.ParseInt(shortClipID, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			clip, err := client.GetShortClipInfo(shortClipID)
+			if err != nil {
+				return err
+			}
+
+			vods, err := client.GetShortClipURL(clip.ShortClipID, clip.VODMediaURL)
+			if err != nil {
+				return err
+			}
+
+			resolution := 0
+			for _, info := range vods {
+				currentResolution := info.Width * info.Height
+				if resolution < currentResolution {
+					parsedURL, err := url.Parse(info.URL)
+					if err != nil {
+						continue
+					}
+
+					if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".m3u8" {
+						if !strings.Contains(parsedURL.Path, "/cmaf/") {
+							hlsURL = parsedURL
+							resolution = currentResolution
+						}
+					}
+				}
+			}
 		}
 	case "comic.naver.com":
 		httpClient.Jar, _ = cookiejar.New(nil)
@@ -174,13 +207,13 @@ func (c *Client) Dial() error {
 				return err
 			}
 
-			videoURL, err := client.GetCutsURL(cutsID, cuts.AssetID(), token)
+			vods, err := client.GetCutsURL(cutsID, cuts.AssetID(), token)
 			if err != nil {
 				return err
 			}
 
-			for _, rawURL := range videoURL {
-				parsedURL, err := url.Parse(rawURL)
+			for _, info := range vods {
+				parsedURL, err := url.Parse(info.URL)
 				if err != nil {
 					continue
 				}

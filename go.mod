@@ -9,7 +9,7 @@ require (
 	github.com/bluenviron/mediacommon/v2 v2.7.2
 	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
-	github.com/jaesung9507/nvver v1.3.0
+	github.com/jaesung9507/nvver v1.3.1
 	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )
