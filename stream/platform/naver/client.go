@@ -108,6 +108,37 @@ func (c *Client) Dial() error {
 			if err != nil {
 				return err
 			}
+		} else if vodNo, ok := strings.CutPrefix(c.url.Path, "/v/"); ok {
+			vodNo, err := strconv.ParseInt(vodNo, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			vodInfo, err := client.GetVODInfo(vodNo)
+			if err != nil {
+				return err
+			}
+
+			vods, err := client.GetVODURL(vodInfo.Clip.ClipNo, vodInfo.Clip.VideoID, vodInfo.Play.InKey)
+			if err != nil {
+				return err
+			}
+
+			resolution := 0
+			for _, info := range vods {
+				currentResolution := info.Width * info.Height
+				if resolution < currentResolution {
+					parsedURL, err := url.Parse(info.URL)
+					if err != nil {
+						continue
+					}
+
+					if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".m3u8" {
+						hlsURL = parsedURL
+						resolution = currentResolution
+					}
+				}
+			}
 		} else if clipNo, ok := strings.CutPrefix(c.url.Path, "/h/"); ok {
 			clipNo, err := strconv.ParseInt(clipNo, 10, 64)
 			if err != nil {
