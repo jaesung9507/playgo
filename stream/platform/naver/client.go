@@ -24,7 +24,7 @@ import (
 
 type Client struct {
 	url        *url.URL
-	hlsClient  *hls.HLSClient
+	hlsClient  *hls.Client
 	httpClient *httpStream.HTTPClient
 }
 
@@ -66,6 +66,46 @@ func (c *Client) Dial() error {
 			hlsURL, err = url.Parse(rawURL)
 			if err != nil {
 				return err
+			}
+		} else if videoNo, ok := strings.CutPrefix(c.url.Path, "/video/"); ok {
+			videoNo, err := strconv.ParseInt(videoNo, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			video, err := client.GetVideoInfo(videoNo)
+			if err != nil {
+				return err
+			}
+
+			if playback, err := video.GetLiveRewindPlayback(); err != nil {
+				vods, err := client.GetVideoURL(video.VideoNo, video.VideoID, video.InKey)
+				if err != nil {
+					return err
+				}
+
+				resolution := 0
+				for _, info := range vods {
+					currentResolution := info.Width * info.Height
+					if resolution < currentResolution {
+						parsedURL, err := url.Parse(info.URL)
+						if err != nil {
+							continue
+						}
+
+						if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".m3u8" {
+							hlsURL = parsedURL
+							resolution = currentResolution
+						}
+					}
+				}
+			} else {
+				if rawURL := playback.HLSPath(); len(rawURL) > 0 {
+					hlsURL, err = url.Parse(rawURL)
+					if err != nil {
+						return err
+					}
+				}
 			}
 		} else if clipID, ok := strings.CutPrefix(c.url.Path, "/clips/"); ok {
 			clipDetail, err := client.GetClipDetail(clipID)

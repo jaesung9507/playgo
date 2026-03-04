@@ -24,7 +24,7 @@ type Client struct {
 	signal      chan any
 	packetQueue chan *av.Packet
 
-	hlsClient *hls.HLSClient
+	hlsClient *hls.Client
 }
 
 func New(parsedURL *url.URL) *Client {

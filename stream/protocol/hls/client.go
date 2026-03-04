@@ -17,7 +17,7 @@ import (
 	"github.com/deepch/vdk/codec/h264parser"
 )
 
-type HLSClient struct {
+type Client struct {
 	url         *url.URL
 	client      *gohlslib.Client
 	signal      chan any
@@ -26,17 +26,17 @@ type HLSClient struct {
 	aacCodec    *codecs.MPEG4Audio
 }
 
-func New(parsedUrl *url.URL) *HLSClient {
-	return &HLSClient{
+func New(parsedUrl *url.URL) *Client {
+	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }
 
-func (h *HLSClient) Dial() error {
-	h.client = &gohlslib.Client{
-		URI: h.url.String(),
+func (c *Client) Dial() error {
+	c.client = &gohlslib.Client{
+		URI: c.url.String(),
 		HTTPClient: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
@@ -44,30 +44,35 @@ func (h *HLSClient) Dial() error {
 				},
 			},
 		},
+		OnRequest: func(r *http.Request) {
+			if r.URL.RawQuery == "" && c.url.RawQuery != "" {
+				r.URL.RawQuery = c.url.RawQuery
+			}
+		},
 	}
 
-	h.client.OnTracks = func(tracks []*gohlslib.Track) error {
+	c.client.OnTracks = func(tracks []*gohlslib.Track) error {
 		for _, track := range tracks {
-			switch c := track.Codec.(type) {
+			switch codec := track.Codec.(type) {
 			case *codecs.H264:
-				h.h264Codec = c
-				h.client.OnDataH26x(track, func(pts, dts int64, au [][]byte) {
+				c.h264Codec = codec
+				c.client.OnDataH26x(track, func(pts, dts int64, au [][]byte) {
 					for _, nalu := range au {
 						var isKeyFrame bool
 						switch h264.NALUType(nalu[0] & 0x1F) {
 						case h264.NALUTypeSPS:
-							if h.h264Codec.SPS == nil {
-								h.h264Codec.SPS = nalu
-								if h.h264Codec.PPS != nil {
-									h.signal <- true
+							if c.h264Codec.SPS == nil {
+								c.h264Codec.SPS = nalu
+								if c.h264Codec.PPS != nil {
+									c.signal <- true
 								}
 							}
 							continue
 						case h264.NALUTypePPS:
-							if h.h264Codec.PPS == nil {
-								h.h264Codec.PPS = nalu
-								if h.h264Codec.SPS != nil {
-									h.signal <- true
+							if c.h264Codec.PPS == nil {
+								c.h264Codec.PPS = nalu
+								if c.h264Codec.SPS != nil {
+									c.signal <- true
 								}
 							}
 							continue
@@ -81,7 +86,7 @@ func (h *HLSClient) Dial() error {
 							pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
 							dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
 
-							h.packetQueue <- &av.Packet{
+							c.packetQueue <- &av.Packet{
 								Idx:             0,
 								IsKeyFrame:      isKeyFrame,
 								CompositionTime: pts - dts,
@@ -92,11 +97,11 @@ func (h *HLSClient) Dial() error {
 					}
 				})
 			case *codecs.MPEG4Audio:
-				h.aacCodec = c
-				h.client.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) {
+				c.aacCodec = codec
+				c.client.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) {
 					for i, au := range aus {
-						delta := time.Duration(i) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(c.Config.SampleRate)
-						h.packetQueue <- &av.Packet{
+						delta := time.Duration(i) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
+						c.packetQueue <- &av.Packet{
 							Idx:  1,
 							Time: (time.Duration(pts) * time.Second / time.Duration(track.ClockRate)) + delta,
 							Data: au,
@@ -104,47 +109,47 @@ func (h *HLSClient) Dial() error {
 					}
 				})
 			default:
-				h.signal <- fmt.Errorf("unsupported codec: %T", track.Codec)
+				c.signal <- fmt.Errorf("unsupported codec: %T", track.Codec)
 			}
 		}
 
-		if h.h264Codec != nil && h.h264Codec.SPS != nil && h.h264Codec.PPS != nil {
-			h.signal <- true
+		if c.h264Codec != nil && c.h264Codec.SPS != nil && c.h264Codec.PPS != nil {
+			c.signal <- true
 		}
 
 		return nil
 	}
 
-	return h.client.Start()
+	return c.client.Start()
 }
 
-func (h *HLSClient) Close() {
-	if h.client != nil {
-		h.client.Close()
+func (c *Client) Close() {
+	if c.client != nil {
+		c.client.Close()
 	}
 }
 
-func (h *HLSClient) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]av.CodecData, error) {
 	go func() {
-		h.signal <- h.client.Wait2()
+		c.signal <- c.client.Wait2()
 	}()
 
-	signal := <-h.signal
+	signal := <-c.signal
 	if err, ok := signal.(error); ok {
 		return nil, err
 	}
 
 	var codecs []av.CodecData
-	if h.h264Codec != nil && h.h264Codec.SPS != nil && h.h264Codec.PPS != nil {
-		h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(h.h264Codec.SPS, h.h264Codec.PPS)
+	if c.h264Codec != nil && c.h264Codec.SPS != nil && c.h264Codec.PPS != nil {
+		h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(c.h264Codec.SPS, c.h264Codec.PPS)
 		if err != nil {
 			return nil, err
 		}
 		codecs = append(codecs, h264Codec)
 	}
 
-	if h.aacCodec != nil {
-		config, err := h.aacCodec.Config.Marshal()
+	if c.aacCodec != nil {
+		config, err := c.aacCodec.Config.Marshal()
 		if err != nil {
 			return nil, err
 		}
@@ -159,10 +164,10 @@ func (h *HLSClient) CodecData() ([]av.CodecData, error) {
 	return codecs, nil
 }
 
-func (h *HLSClient) PacketQueue() <-chan *av.Packet {
-	return h.packetQueue
+func (c *Client) PacketQueue() <-chan *av.Packet {
+	return c.packetQueue
 }
 
-func (h *HLSClient) CloseCh() <-chan any {
-	return h.signal
+func (c *Client) CloseCh() <-chan any {
+	return c.signal
 }

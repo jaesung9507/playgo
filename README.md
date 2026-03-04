@@ -34,6 +34,7 @@ The following platforms are supported via direct URL input.
 | YouTube | Kids | https://www.youtubekids.com/watch?v={videoID} |
 | YouTube | Music | https://music.youtube.com/watch?v={videoID} |
 | CHZZK | Live | https://chzzk.naver.com/live/{channelID} |
+| CHZZK | Video | https://chzzk.naver.com/video/{videoNo} |
 | CHZZK | Clip | https://chzzk.naver.com/clips/{clipID} |
 | NAVER TV | Live | https://tv.naver.com/l/{liveNo} |
 | NAVER TV | VOD | https://tv.naver.com/v/{vodNo} |
