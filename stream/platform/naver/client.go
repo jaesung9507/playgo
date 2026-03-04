@@ -289,8 +289,8 @@ func (c *Client) Dial() error {
 					continue
 				}
 
-				if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".mp4" {
-					mp4URL = parsedURL
+				if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".m3u8" {
+					hlsURL = parsedURL
 					break
 				}
 			}
