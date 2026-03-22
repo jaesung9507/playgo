@@ -33,6 +33,9 @@ The following platforms are supported via direct URL input.
 | YouTube | Shorts | https://www.youtube.com/shorts/{videoID} |
 | YouTube | Kids | https://www.youtubekids.com/watch?v={videoID} |
 | YouTube | Music | https://music.youtube.com/watch?v={videoID} |
+| CIME | Live | https://ci.me/@{channelSlug}/live |
+| CIME | VOD | https://ci.me/@{channelSlug}/vods/{vodID} |
+| CIME | Clip | https://ci.me/clips/{clipID} |
 | CHZZK | Live | https://chzzk.naver.com/live/{channelID} |
 | CHZZK | Video | https://chzzk.naver.com/video/{videoNo} |
 | CHZZK | Clip | https://chzzk.naver.com/clips/{clipID} |
