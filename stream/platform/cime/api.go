@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+
+	"github.com/dop251/goja"
 )
 
 func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
@@ -20,9 +22,14 @@ func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
 		return "", fmt.Errorf("failed to read body: %w", err)
 	}
 
-	m := regexp.MustCompile(`(?s)JSON\.parse\(['"](.+?)['"]\)`).FindSubmatch(data)
+	m := regexp.MustCompile(`(?s)JSON\.parse\((['"].+?['"])\)`).FindSubmatch(data)
 	if len(m) < 2 {
 		return "", fmt.Errorf("not found data: content-length=%d", len(data))
+	}
+
+	v, err := goja.New().RunString(string(m[1]))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse raw json: %w", err)
 	}
 
 	result := &struct {
@@ -34,12 +41,12 @@ func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
 			} `json:"bodyData"`
 		} `json:"args"`
 	}{}
-	if err = json.Unmarshal(m[1], result); err != nil {
+	if err = json.Unmarshal([]byte(v.String()), result); err != nil {
 		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
 	if len(result.Args) < 1 || len(result.Args[0].BodyData.Live.PlaybackURL) <= 0 {
-		return "", fmt.Errorf("not found playback url: %s", string(data))
+		return "", fmt.Errorf("not found playback url: %+v", result)
 	}
 
 	return result.Args[0].BodyData.Live.PlaybackURL, nil
@@ -57,9 +64,14 @@ func GetVODHLSURL(client *http.Client, channelSlug, vodID string) (string, error
 		return "", fmt.Errorf("failed to read body: %w", err)
 	}
 
-	m := regexp.MustCompile(`(?s)JSON\.parse\(['"](.+?)['"]\)`).FindSubmatch(data)
+	m := regexp.MustCompile(`(?s)JSON\.parse\((['"].+?['"])\)`).FindSubmatch(data)
 	if len(m) < 2 {
 		return "", fmt.Errorf("not found data: content-length=%d", len(data))
+	}
+
+	v, err := goja.New().RunString(string(m[1]))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse raw json: %w", err)
 	}
 
 	result := &struct {
@@ -71,12 +83,12 @@ func GetVODHLSURL(client *http.Client, channelSlug, vodID string) (string, error
 			} `json:"bodyData"`
 		} `json:"args"`
 	}{}
-	if err = json.Unmarshal(m[1], result); err != nil {
+	if err = json.Unmarshal([]byte(v.String()), result); err != nil {
 		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
 	if len(result.Args) < 1 || len(result.Args[0].BodyData.VOD.PlaybackURL) <= 0 {
-		return "", fmt.Errorf("not found playback url: %s", string(data))
+		return "", fmt.Errorf("not found playback url: %+v", result)
 	}
 
 	return result.Args[0].BodyData.VOD.PlaybackURL, nil
@@ -94,9 +106,14 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 		return "", fmt.Errorf("failed to read body: %w", err)
 	}
 
-	m := regexp.MustCompile(`(?s)JSON\.parse\(['"](.+?)['"]\)`).FindSubmatch(data)
+	m := regexp.MustCompile(`(?s)JSON\.parse\((['"].+?['"])\)`).FindSubmatch(data)
 	if len(m) < 2 {
 		return "", fmt.Errorf("not found data: content-length=%d", len(data))
+	}
+
+	v, err := goja.New().RunString(string(m[1]))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse raw json: %w", err)
 	}
 
 	result := &struct {
@@ -109,7 +126,7 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 			} `json:"bodyData"`
 		} `json:"args"`
 	}{}
-	if err = json.Unmarshal(m[1], result); err != nil {
+	if err = json.Unmarshal([]byte(v.String()), result); err != nil {
 		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
@@ -121,5 +138,5 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("not found playback url: %s", string(data))
+	return "", fmt.Errorf("not found playback url: %+v", result)
 }
