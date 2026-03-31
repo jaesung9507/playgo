@@ -10,7 +10,7 @@ require (
 	github.com/datarhei/gosrt v0.9.0
 	github.com/deepch/vdk v0.0.20
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
-	github.com/jaesung9507/nvver v1.3.1
+	github.com/jaesung9507/nvver v1.3.2
 	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )
