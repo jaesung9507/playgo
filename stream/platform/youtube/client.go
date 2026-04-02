@@ -1,38 +1,29 @@
 package youtube
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
+	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/deepch/vdk/av"
-	"github.com/deepch/vdk/format/mp4"
 	"github.com/kkdai/youtube/v2"
 )
 
 type Client struct {
-	url         *url.URL
-	demuxer     *mp4.Demuxer
-	signal      chan any
-	packetQueue chan *av.Packet
-
+	url       *url.URL
 	hlsClient *hls.Client
+	mp4Client *httpStream.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
-	return &Client{
-		url:         parsedURL,
-		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
-	}
+	return &Client{url: parsedURL}
 }
 
 func (c *Client) Dial() error {
@@ -46,6 +37,7 @@ func (c *Client) Dial() error {
 		},
 	}
 
+	log.Printf("[YouTube] dial: %s", c.url.String())
 	youtubeURL := c.url.String()
 	if videoID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
 		youtubeURL = fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
@@ -55,37 +47,46 @@ func (c *Client) Dial() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("[YouTube] video title: %s", video.Title)
 
 	if len(video.HLSManifestURL) > 0 {
 		hlsURL, err := url.Parse(video.HLSManifestURL)
 		if err != nil {
 			return err
 		}
-
 		c.hlsClient = hls.New(hlsURL)
+
 		return c.hlsClient.Dial()
 	}
 
 	formats := video.Formats.WithAudioChannels().Type("video/mp4")
-	stream, _, err := client.GetStream(video, &formats[0])
+	if len(formats) == 0 {
+		return errors.New("not found mp4 formats")
+	}
+	log.Printf("[Youtube] quality: %s", formats[0].QualityLabel)
+
+	streamURL, err := client.GetStreamURL(video, &formats[0])
 	if err != nil {
 		return err
 	}
-	defer stream.Close()
 
-	data, err := io.ReadAll(stream)
+	mp4URL, err := url.Parse(streamURL)
 	if err != nil {
 		return err
 	}
+	c.mp4Client = httpStream.NewMP4Client(mp4URL)
 
-	c.demuxer = mp4.NewDemuxer(bytes.NewReader(data))
-
-	return nil
+	return c.mp4Client.Dial()
 }
 
 func (c *Client) Close() {
+	log.Print("[YouTube] close")
 	if c.hlsClient != nil {
 		c.hlsClient.Close()
+	}
+
+	if c.mp4Client != nil {
+		c.mp4Client.Close()
 	}
 }
 
@@ -94,46 +95,33 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 		return c.hlsClient.CodecData()
 	}
 
-	streams, err := c.demuxer.Streams()
-	if err == nil {
-		go func() {
-			var baseCtsOffset time.Duration
-			for {
-				packet, err := c.demuxer.ReadPacket()
-				if err != nil {
-					if !errors.Is(err, io.EOF) {
-						c.signal <- err
-					}
-					return
-				}
-
-				// WORKAROUND: Correct invalid cts values from the vdk mp4 demuxer that cause decode failures on macOS
-				if packet.IsKeyFrame && packet.CompositionTime > 0 {
-					baseCtsOffset = packet.CompositionTime
-				} else if baseCtsOffset > 0 && packet.CompositionTime == 0 {
-					baseCtsOffset = 0
-				}
-				if baseCtsOffset > 0 {
-					packet.CompositionTime -= baseCtsOffset
-				}
-
-				c.packetQueue <- &packet
-			}
-		}()
+	if c.mp4Client != nil {
+		return c.mp4Client.CodecData()
 	}
-	return streams, err
+
+	return nil, errors.New("not supported")
 }
 
 func (c *Client) PacketQueue() <-chan *av.Packet {
 	if c.hlsClient != nil {
 		return c.hlsClient.PacketQueue()
 	}
-	return c.packetQueue
+
+	if c.mp4Client != nil {
+		return c.mp4Client.PacketQueue()
+	}
+
+	return nil
 }
 
 func (c *Client) CloseCh() <-chan any {
 	if c.hlsClient != nil {
 		return c.hlsClient.CloseCh()
 	}
-	return c.signal
+
+	if c.mp4Client != nil {
+		return c.mp4Client.CloseCh()
+	}
+
+	return nil
 }

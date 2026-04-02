@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -25,7 +26,7 @@ import (
 type Client struct {
 	url        *url.URL
 	hlsClient  *hls.Client
-	httpClient *httpStream.HTTPClient
+	httpClient *httpStream.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -43,6 +44,7 @@ func (c *Client) Dial() error {
 		},
 	}
 
+	log.Printf("[NAVER] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	switch c.url.Host {
 	case "chzzk.naver.com":
@@ -112,6 +114,7 @@ func (c *Client) Dial() error {
 			if err != nil {
 				return err
 			}
+			log.Printf("[NAVER] clip title: %s", clipDetail.ClipTitle)
 
 			mp4URLs, err := client.GetClipMP4URL(clipDetail.ClipUID, clipDetail.VideoID)
 			if err != nil {
@@ -189,6 +192,7 @@ func (c *Client) Dial() error {
 			if err != nil {
 				return err
 			}
+			log.Printf("[NAVER] video id: %s", videoID)
 
 			mp4URLs, err := client.GetClipMP4URL(videoID)
 			if err != nil {
@@ -301,7 +305,7 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.httpClient = httpStream.New(mp4URL)
+		c.httpClient = httpStream.NewMP4Client(mp4URL)
 		return c.httpClient.Dial()
 	}
 
@@ -309,6 +313,7 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) Close() {
+	log.Print("[NAVER] close")
 	if c.hlsClient != nil {
 		c.hlsClient.Close()
 	}

@@ -3,6 +3,7 @@ package cime
 import (
 	"crypto/tls"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,7 +16,7 @@ import (
 type Client struct {
 	url        *url.URL
 	hlsClient  *hls.Client
-	httpClient *httpStream.HTTPClient
+	httpClient *httpStream.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -34,6 +35,7 @@ func (c *Client) Dial() error {
 		},
 	}
 
+	log.Printf("[CEMI] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	if channelPath, ok := strings.CutPrefix(c.url.Path, "/@"); ok {
 		if channelSlug, tailPath, ok := strings.Cut(channelPath, "/"); ok {
@@ -75,7 +77,7 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.httpClient = httpStream.New(mp4URL)
+		c.httpClient = httpStream.NewMP4Client(mp4URL)
 		return c.httpClient.Dial()
 	}
 
@@ -83,6 +85,7 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) Close() {
+	log.Print("[CEMI] close")
 	if c.hlsClient != nil {
 		c.hlsClient.Close()
 	}
