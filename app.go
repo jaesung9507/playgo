@@ -144,7 +144,7 @@ func (a *App) streamLoop() {
 	}
 }
 
-func (a *App) PlayStream(url string) bool {
+func (a *App) PlayStream(url string) (result bool) {
 	a.streamCtx, a.cancel = context.WithCancel(a.ctx)
 
 	client, err := stream.Dial(a.streamCtx, url)
@@ -154,6 +154,11 @@ func (a *App) PlayStream(url string) bool {
 		}
 		return false
 	}
+	defer func() {
+		if !result {
+			client.Close()
+		}
+	}()
 
 	codecData, err := stream.CodecData(a.streamCtx, client)
 	if err != nil {
@@ -163,9 +168,13 @@ func (a *App) PlayStream(url string) bool {
 		return false
 	}
 
+	if len(codecData) <= 0 {
+		a.MsgBox("not found codec info")
+		return false
+	}
+
 	muxer := mp4f.NewMuxer(nil)
 	if err = muxer.WriteHeader(codecData); err != nil {
-		client.Close()
 		a.MsgBox(err.Error())
 		return false
 	}

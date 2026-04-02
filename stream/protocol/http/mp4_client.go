@@ -61,12 +61,14 @@ func (c *MP4Client) Dial() error {
 			c.Close()
 			return fmt.Errorf("not supported for live streams: %d", contentLength)
 		}
+		log.Printf("[HTTP-MP4] Content-Length: %d", contentLength)
 
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.Close()
 			return err
 		}
+		log.Print("[HTTP-MP4] finish download")
 
 		c.demuxer = mp4.NewDemuxer(bytes.NewReader(data))
 	} else {

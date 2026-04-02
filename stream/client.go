@@ -54,6 +54,8 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 			switch filepath.Ext(path.Base(parsedURL.Path)) {
 			case ".m3u8":
 				client = hls.New(parsedURL)
+			case ".mp4":
+				client = http.NewMP4Client(parsedURL)
 			default:
 				client = http.New(parsedURL)
 			}
