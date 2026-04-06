@@ -11,74 +11,75 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
+	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 	srt "github.com/datarhei/gosrt"
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/codec/aacparser"
 	"github.com/deepch/vdk/codec/h264parser"
 )
 
-type SRTClient struct {
+type Client struct {
 	url         *url.URL
 	reader      *mpegts.Reader
 	signal      chan any
 	packetQueue chan *av.Packet
 }
 
-func New(parsedUrl *url.URL) *SRTClient {
-	return &SRTClient{
+func New(parsedUrl *url.URL) *Client {
+	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet, 128),
 	}
 }
 
-func (s *SRTClient) getConfig() (*srt.Config, error) {
-	c := srt.DefaultConfig()
-	if _, err := c.UnmarshalURL(s.url.String()); err != nil {
+func (c *Client) getConfig() (*srt.Config, error) {
+	cfg := srt.DefaultConfig()
+	if _, err := cfg.UnmarshalURL(c.url.String()); err != nil {
 		return nil, err
 	}
 
-	if len(c.StreamId) <= 0 && strings.HasPrefix(s.url.Fragment, "!::") {
-		c.StreamId = "#" + s.url.Fragment
+	if len(cfg.StreamId) <= 0 && strings.HasPrefix(c.url.Fragment, "!::") {
+		cfg.StreamId = "#" + c.url.Fragment
 	}
 
-	return &c, nil
+	return &cfg, nil
 }
 
-func (s *SRTClient) Dial() error {
-	c, err := s.getConfig()
+func (c *Client) Dial() error {
+	cfg, err := c.getConfig()
 	if err != nil {
 		return err
 	}
 
-	conn, err := srt.Dial(s.url.Scheme, s.url.Host, *c)
+	conn, err := srt.Dial(c.url.Scheme, c.url.Host, *cfg)
 	if err != nil {
 		return err
 	}
 
-	s.reader = &mpegts.Reader{R: conn}
-	if err = s.reader.Initialize(); err != nil {
+	c.reader = &mpegts.Reader{R: conn}
+	if err = c.reader.Initialize(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *SRTClient) Close() {
-	if s.reader != nil {
-		if closer, ok := s.reader.R.(io.ReadCloser); ok {
+func (c *Client) Close() {
+	if c.reader != nil {
+		if closer, ok := c.reader.R.(io.ReadCloser); ok {
 			closer.Close()
 		}
 	}
 }
 
-func (s *SRTClient) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]av.CodecData, error) {
 	var sps, pps []byte
-	var aacCodec *mpegts.CodecMPEG4Audio
-	for _, track := range s.reader.Tracks() {
-		switch c := track.Codec.(type) {
-		case *mpegts.CodecH264:
-			s.reader.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
+	var aacCodec *codecs.MPEG4Audio
+	for _, track := range c.reader.Tracks() {
+		switch codec := track.Codec.(type) {
+		case *codecs.H264:
+			c.reader.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
 				for _, nalu := range au {
 					var isKeyFrame bool
 					switch h264.NALUType(nalu[0] & 0x1F) {
@@ -102,7 +103,7 @@ func (s *SRTClient) CodecData() ([]av.CodecData, error) {
 						pts := time.Duration(pts) * time.Second / time.Duration(90000)
 						dts := time.Duration(dts) * time.Second / time.Duration(90000)
 
-						s.packetQueue <- &av.Packet{
+						c.packetQueue <- &av.Packet{
 							Idx:             0,
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
@@ -113,12 +114,12 @@ func (s *SRTClient) CodecData() ([]av.CodecData, error) {
 				}
 				return nil
 			})
-		case *mpegts.CodecMPEG4Audio:
-			aacCodec = c
-			s.reader.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) error {
+		case *codecs.MPEG4Audio:
+			aacCodec = codec
+			c.reader.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) error {
 				for i, au := range aus {
-					delta := time.Duration(i) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(c.Config.SampleRate)
-					s.packetQueue <- &av.Packet{
+					delta := time.Duration(i) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
+					c.packetQueue <- &av.Packet{
 						Idx:  1,
 						Time: (time.Duration(pts) * time.Second / time.Duration(90000)) + delta,
 						Data: au,
@@ -132,7 +133,7 @@ func (s *SRTClient) CodecData() ([]av.CodecData, error) {
 	}
 
 	for sps == nil || pps == nil {
-		if err := s.reader.Read(); err != nil {
+		if err := c.reader.Read(); err != nil {
 			return nil, err
 		}
 	}
@@ -159,8 +160,8 @@ func (s *SRTClient) CodecData() ([]av.CodecData, error) {
 
 	go func() {
 		for {
-			if err := s.reader.Read(); err != nil {
-				s.signal <- err
+			if err := c.reader.Read(); err != nil {
+				c.signal <- err
 				return
 			}
 		}
@@ -169,10 +170,10 @@ func (s *SRTClient) CodecData() ([]av.CodecData, error) {
 	return codecs, nil
 }
 
-func (s *SRTClient) PacketQueue() <-chan *av.Packet {
-	return s.packetQueue
+func (c *Client) PacketQueue() <-chan *av.Packet {
+	return c.packetQueue
 }
 
-func (s *SRTClient) CloseCh() <-chan any {
-	return s.signal
+func (c *Client) CloseCh() <-chan any {
+	return c.signal
 }
