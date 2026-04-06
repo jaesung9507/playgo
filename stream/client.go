@@ -80,6 +80,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 		return nil, context.Canceled
 	case err := <-ch:
 		if err != nil {
+			client.Close()
 			return nil, err
 		}
 	}
