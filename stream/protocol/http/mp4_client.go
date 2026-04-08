@@ -32,17 +32,23 @@ func NewMP4Client(parsedUrl *url.URL) *MP4Client {
 	}
 }
 
+func (c *MP4Client) DialWithHTTPClient(client *http.Client) error {
+	return c.dial(client)
+}
+
 func (c *MP4Client) Dial() error {
-	client := &http.Client{
+	return c.dial(&http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		},
-	}
+	})
+}
 
+func (c *MP4Client) dial(client *http.Client) error {
 	log.Printf("[HTTP-MP4] dial: %s", c.url.String())
-	srs, err := NewStreamingReadSeeker(c.url.String())
+	srs, err := NewStreamingReadSeeker(c.url.String(), client)
 	if err != nil {
 		log.Printf("[HTTP-MP4] failed to mp4 streaming: %v", err)
 		resp, err := client.Get(c.url.String())

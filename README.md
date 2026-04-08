@@ -33,6 +33,8 @@ The following platforms are supported via direct URL input.
 | YouTube | Shorts | https://www.youtube.com/shorts/{videoID} |
 | YouTube | Kids | https://www.youtubekids.com/watch?v={videoID} |
 | YouTube | Music | https://music.youtube.com/watch?v={videoID} |
+| TikTok | Video | https://www.tiktok.com/@{uniqueID}/video/{videoID} |
+| TikTok | Live | https://www.tiktok.com/@{uniqueID}/live |
 | CIME | Live | https://ci.me/@{channelSlug}/live |
 | CIME | VOD | https://ci.me/@{channelSlug}/vods/{vodID} |
 | CIME | Clip | https://ci.me/clips/{clipID} |

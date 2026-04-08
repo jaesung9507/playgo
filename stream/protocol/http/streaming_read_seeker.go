@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -39,18 +38,12 @@ type StreamingReadSeeker struct {
 	cancel         context.CancelFunc
 }
 
-func NewStreamingReadSeeker(url string) (*StreamingReadSeeker, error) {
+func NewStreamingReadSeeker(url string, client *http.Client) (*StreamingReadSeeker, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := &StreamingReadSeeker{
-		url: url,
-		client: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
-		},
+		url:    url,
+		client: client,
 		chunks: make(map[int64][]byte),
 		ctx:    ctx,
 		cancel: cancel,

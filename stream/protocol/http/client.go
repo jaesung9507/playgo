@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -18,7 +19,7 @@ import (
 	"github.com/deepch/vdk/format/ts"
 )
 
-type HTTPClient struct {
+type Client struct {
 	url         *url.URL
 	closer      io.Closer
 	demuxer     av.Demuxer
@@ -27,16 +28,16 @@ type HTTPClient struct {
 	isLive      bool
 }
 
-func New(parsedUrl *url.URL) *HTTPClient {
-	return &HTTPClient{
+func New(parsedUrl *url.URL) *Client {
+	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }
 
-func (h *HTTPClient) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error) {
-	ext := filepath.Ext(path.Base(h.url.Path))
+func (c *Client) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error) {
+	ext := filepath.Ext(path.Base(c.url.Path))
 	switch ext {
 	case ".flv":
 		return func(r io.Reader) (av.Demuxer, error) { return flv.NewDemuxer(r), nil }, nil
@@ -44,7 +45,7 @@ func (h *HTTPClient) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), er
 		return func(r io.Reader) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
 	case ".mp4":
 		return func(r io.Reader) (av.Demuxer, error) {
-			if h.isLive {
+			if c.isLive {
 				return nil, fmt.Errorf("not supported for live streams: %s", ext)
 			}
 			data, err := io.ReadAll(r)
@@ -57,8 +58,9 @@ func (h *HTTPClient) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), er
 	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
 
-func (h *HTTPClient) Dial() error {
-	newDemuxer, err := h.getDemuxerFunc()
+func (c *Client) Dial() error {
+	log.Printf("[HTTP] dial: %s", c.url.String())
+	newDemuxer, err := c.getDemuxerFunc()
 	if err != nil {
 		return err
 	}
@@ -70,59 +72,60 @@ func (h *HTTPClient) Dial() error {
 			},
 		},
 	}
-	resp, err := client.Get(h.url.String())
+	resp, err := client.Get(c.url.String())
 	if err != nil {
 		return err
 	}
-	h.closer = resp.Body
+	c.closer = resp.Body
 
 	contentLength, _ := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 	if contentLength <= 0 {
-		h.isLive = true
+		c.isLive = true
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		h.Close()
+		c.Close()
 		return fmt.Errorf("status code: %s", resp.Status)
 	}
 
-	if h.demuxer, err = newDemuxer(resp.Body); err != nil {
-		h.Close()
+	if c.demuxer, err = newDemuxer(resp.Body); err != nil {
+		c.Close()
 		return err
 	}
 
 	return nil
 }
 
-func (h *HTTPClient) Close() {
-	if h.closer != nil {
-		h.closer.Close()
+func (c *Client) Close() {
+	log.Print("[HTTP] close")
+	if c.closer != nil {
+		c.closer.Close()
 	}
 }
 
-func (h *HTTPClient) CodecData() ([]av.CodecData, error) {
-	streams, err := h.demuxer.Streams()
+func (c *Client) CodecData() ([]av.CodecData, error) {
+	streams, err := c.demuxer.Streams()
 	if err == nil {
 		go func() {
 			for {
-				packet, err := h.demuxer.ReadPacket()
+				packet, err := c.demuxer.ReadPacket()
 				if err != nil {
-					if h.isLive || !errors.Is(err, io.EOF) {
-						h.signal <- err
+					if c.isLive || !errors.Is(err, io.EOF) {
+						c.signal <- err
 					}
 					return
 				}
-				h.packetQueue <- &packet
+				c.packetQueue <- &packet
 			}
 		}()
 	}
 	return streams, err
 }
 
-func (h *HTTPClient) PacketQueue() <-chan *av.Packet {
-	return h.packetQueue
+func (c *Client) PacketQueue() <-chan *av.Packet {
+	return c.packetQueue
 }
 
-func (h *HTTPClient) CloseCh() <-chan any {
-	return h.signal
+func (c *Client) CloseCh() <-chan any {
+	return c.signal
 }
