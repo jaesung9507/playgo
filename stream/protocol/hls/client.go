@@ -1,9 +1,11 @@
 package hls
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -51,14 +53,18 @@ func (c *Client) Dial() error {
 		},
 	}
 
+	log.Printf("[HLS] dial: %s", c.url.String())
 	c.client.OnTracks = func(tracks []*gohlslib.Track) error {
-		for _, track := range tracks {
+		for i, track := range tracks {
+			log.Printf("[HLS] on track %d: %T", i, track.Codec)
 			switch codec := track.Codec.(type) {
 			case *codecs.H264:
 				c.h264Codec = codec
+				buf := bytes.NewBuffer(nil)
 				c.client.OnDataH26x(track, func(pts, dts int64, au [][]byte) {
+					buf.Reset()
+					var isKeyFrame bool
 					for _, nalu := range au {
-						var isKeyFrame bool
 						switch h264.NALUType(nalu[0] & 0x1F) {
 						case h264.NALUTypeSPS:
 							if c.h264Codec.SPS == nil {
@@ -67,7 +73,6 @@ func (c *Client) Dial() error {
 									c.signal <- true
 								}
 							}
-							continue
 						case h264.NALUTypePPS:
 							if c.h264Codec.PPS == nil {
 								c.h264Codec.PPS = nalu
@@ -75,32 +80,34 @@ func (c *Client) Dial() error {
 									c.signal <- true
 								}
 							}
-							continue
 						case h264.NALUTypeIDR:
 							isKeyFrame = true
 							fallthrough
 						case h264.NALUTypeNonIDR, h264.NALUTypeDataPartitionA, h264.NALUTypeDataPartitionB, h264.NALUTypeDataPartitionC:
-							b := make([]byte, 4+len(nalu))
-							binary.BigEndian.PutUint32(b, uint32(len(nalu)))
-							copy(b[4:], nalu)
-							pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
-							dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
+							binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
+							buf.Write(nalu)
+						}
+					}
 
-							c.packetQueue <- &av.Packet{
-								Idx:             0,
-								IsKeyFrame:      isKeyFrame,
-								CompositionTime: pts - dts,
-								Time:            dts,
-								Data:            b,
-							}
+					if bufLen := buf.Len(); bufLen > 0 {
+						data := make([]byte, bufLen)
+						copy(data, buf.Bytes())
+						pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
+						dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
+						c.packetQueue <- &av.Packet{
+							Idx:             0,
+							IsKeyFrame:      isKeyFrame,
+							CompositionTime: pts - dts,
+							Time:            dts,
+							Data:            data,
 						}
 					}
 				})
 			case *codecs.MPEG4Audio:
 				c.aacCodec = codec
 				c.client.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) {
-					for i, au := range aus {
-						delta := time.Duration(i) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
+					for j, au := range aus {
+						delta := time.Duration(j) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
 						c.packetQueue <- &av.Packet{
 							Idx:  1,
 							Time: (time.Duration(pts) * time.Second / time.Duration(track.ClockRate)) + delta,
@@ -124,6 +131,7 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) Close() {
+	log.Print("[HLS] close")
 	if c.client != nil {
 		c.client.Close()
 	}
@@ -146,6 +154,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			return nil, err
 		}
 		codecs = append(codecs, h264Codec)
+		log.Printf("[HLS] track %d: H264 codec ready", 0)
 	}
 
 	if c.aacCodec != nil {
@@ -159,6 +168,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			return nil, err
 		}
 		codecs = append(codecs, aacCodec)
+		log.Printf("[HLS] track %d: AAC codec ready", 1)
 	}
 
 	return codecs, nil

@@ -47,6 +47,7 @@ The following platforms are supported via direct URL input.
 | Shopping Live | Live | https://view.shoppinglive.naver.com/lives/{broadcastID} |
 | Shopping Live | Short Clip | https://view.shoppinglive.naver.com/shortclips/{shortClipID} |
 | WEBTOON | Cuts | https://comic.naver.com/cuts/v?id={cutsID} |
+| SBS | Live | https://www.sbs.co.kr/live/{channelID} |
 
 ### General Features
 - Cross-platform support (Windows, macOS, Linux)

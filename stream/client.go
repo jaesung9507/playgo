@@ -10,6 +10,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/file"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
+	"github.com/jaesung9507/playgo/stream/platform/sbs"
 	"github.com/jaesung9507/playgo/stream/platform/tiktok"
 	"github.com/jaesung9507/playgo/stream/platform/youtube"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
@@ -47,6 +48,8 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 		switch parsedURL.Host {
 		case "ci.me":
 			client = cime.New(parsedURL)
+		case "sbs.co.kr", "www.sbs.co.kr":
+			client = sbs.New(parsedURL)
 		case "tiktok.com", "www.tiktok.com":
 			client = tiktok.New(parsedURL)
 		case "chzzk.naver.com", "tv.naver.com", "view.shoppinglive.naver.com", "comic.naver.com":
