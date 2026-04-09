@@ -120,8 +120,10 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 		Args []struct {
 			BodyData struct {
 				Clips []struct {
-					ID          string `json:"id"`
-					PlaybackURL string `json:"playbackUrl"`
+					ID       string `json:"id"`
+					Playback struct {
+						URL string `json:"url"`
+					} `json:"playback"`
 				} `json:"clips"`
 			} `json:"bodyData"`
 		} `json:"args"`
@@ -133,7 +135,7 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 	for _, args := range result.Args {
 		for _, clip := range args.BodyData.Clips {
 			if clip.ID == clipID {
-				return clip.PlaybackURL, nil
+				return clip.Playback.URL, nil
 			}
 		}
 	}
