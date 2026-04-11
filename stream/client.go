@@ -54,7 +54,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 			client = tiktok.New(parsedURL)
 		case "chzzk.naver.com", "tv.naver.com", "view.shoppinglive.naver.com", "comic.naver.com":
 			client = naver.New(parsedURL)
-		case "www.youtube.com", "music.youtube.com", "youtu.be", "www.youtubekids.com":
+		case "youtube.com", "www.youtube.com", "music.youtube.com", "youtu.be", "youtubekids.com", "www.youtubekids.com":
 			client = youtube.New(parsedURL)
 		default:
 			switch filepath.Ext(path.Base(parsedURL.Path)) {
