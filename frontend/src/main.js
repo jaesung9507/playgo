@@ -1,7 +1,7 @@
 import './style.css';
 import './app.css';
 
-import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, Quit} from '../wailsjs/go/main/App';
+import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, MsgBox, Quit} from '../wailsjs/go/main/App';
 import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 
 let mediaSource, sourceBuffer;
@@ -115,6 +115,8 @@ elVideo.addEventListener("error", (e) => {
     const error = elVideo.error;
     if (error) {
         console.error(`video error: code=${error.code}, message=${error.message}`, e);
+        MsgBox(error.message);
+        CloseStream();
     }
 });
 
