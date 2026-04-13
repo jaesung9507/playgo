@@ -35,18 +35,39 @@ func (c *Client) Dial() error {
 
 	log.Printf("[SBS] dial: %s", c.url.String())
 
-	if channelID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
-		onair, err := GetOnAir(client, channelID)
-		if err != nil {
-			return err
-		}
-		log.Printf("[SBS] video title: %s", onair.Info.Title)
+	var hlsURL *url.URL
+	switch c.url.Host {
+	case "sbs.co.kr", "www.sbs.co.kr":
+		if channelID, ok := strings.CutPrefix(c.url.Path, "/live/"); ok {
+			resp, err := GetOnAir(client, channelID)
+			if err != nil {
+				return err
+			}
+			log.Printf("[SBS] video title: %s", resp.Info.Title)
 
-		hlsURL, err := url.Parse(onair.GetHLSURL())
-		if err != nil {
-			return err
+			hlsURL, err = url.Parse(resp.HLSURL())
+			if err != nil {
+				return err
+			}
 		}
+	case "allvod.sbs.co.kr":
+		if mediaID, ok := strings.CutPrefix(c.url.Path, "/watch/vod/"); ok {
+			if _, mediaID, ok = strings.Cut(mediaID, "/"); ok {
+				resp, err := GetVOD(client, mediaID)
+				if err != nil {
+					return err
+				}
+				log.Printf("[SBS] video title: %s", resp.Info.Title)
 
+				hlsURL, err = url.Parse(resp.HLSURL())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if hlsURL != nil {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	}

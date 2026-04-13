@@ -48,7 +48,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 		switch parsedURL.Host {
 		case "ci.me":
 			client = cime.New(parsedURL)
-		case "sbs.co.kr", "www.sbs.co.kr":
+		case "sbs.co.kr", "www.sbs.co.kr", "allvod.sbs.co.kr":
 			client = sbs.New(parsedURL)
 		case "tiktok.com", "www.tiktok.com":
 			client = tiktok.New(parsedURL)

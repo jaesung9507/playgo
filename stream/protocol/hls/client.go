@@ -93,11 +93,9 @@ func (c *Client) Dial() error {
 							codec.PPS = nalu
 						case h264.NALUTypeIDR:
 							isKeyFrame = true
-							fallthrough
-						default:
-							binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-							buf.Write(nalu)
 						}
+						binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
+						buf.Write(nalu)
 					}
 
 					if trackCodecs[i] == nil && codec.SPS != nil && codec.PPS != nil {

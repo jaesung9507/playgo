@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-type OnAir struct {
+type Response struct {
 	Info struct {
 		Title       string `json:"title"`
 		ChannelName string `json:"channelname"`
@@ -22,7 +22,7 @@ type OnAir struct {
 	} `json:"source"`
 }
 
-func (o *OnAir) GetHLSURL() string {
+func (o *Response) HLSURL() string {
 	return o.Source.MediaSource.MediaURL
 }
 
@@ -38,7 +38,7 @@ func getChannelPath(channelID string) string {
 	return ""
 }
 
-func GetOnAir(client *http.Client, channelID string) (*OnAir, error) {
+func GetOnAir(client *http.Client, channelID string) (*Response, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://apis.sbs.co.kr/play-api/1.0/onair%s/channel/%s", getChannelPath(channelID), channelID), nil)
 	if err != nil {
 		return nil, err
@@ -60,17 +60,55 @@ func GetOnAir(client *http.Client, channelID string) (*OnAir, error) {
 	defer resp.Body.Close()
 
 	result := &struct {
-		Status  int    `json:"status"`
-		Message string `json:"message"`
-		OnAir   OnAir  `json:"onair"`
+		Status  int      `json:"status"`
+		Message string   `json:"message"`
+		OnAir   Response `json:"onair"`
 	}{}
 	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
 		return nil, fmt.Errorf("failed to decode json: %w", err)
 	}
 
 	if result.Status > 0 {
-		return nil, fmt.Errorf("api stauts=%d, message=%s", result.Status, result.Message)
+		return nil, fmt.Errorf("api status=%d, message=%s", result.Status, result.Message)
 	}
 
 	return &result.OnAir, nil
+}
+
+func GetVOD(client *http.Client, mediaID string) (*Response, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://apis.sbs.co.kr/play-api/1.0/sbs_vodall/%s", mediaID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := req.URL.Query()
+	q.Set("jwt-token", "")
+	q.Set("platform", "pcweb")
+	q.Set("service", "program")
+	q.Set("absolute_show", "Y")
+	q.Set("ssl", "Y")
+	q.Set("rscuse", "")
+	q.Set("protocol", "hls")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	result := &struct {
+		Status  int      `json:"status"`
+		Message string   `json:"message"`
+		VOD     Response `json:"vod"`
+	}{}
+	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return nil, fmt.Errorf("failed to decode json: %w", err)
+	}
+
+	if result.Status > 0 {
+		return nil, fmt.Errorf("api status=%d, message=%s", result.Status, result.Message)
+	}
+
+	return &result.VOD, nil
 }
