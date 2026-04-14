@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/deepch/vdk/av"
@@ -51,18 +52,29 @@ func (c *Client) Dial() error {
 			}
 		}
 	case "allvod.sbs.co.kr":
-		if mediaID, ok := strings.CutPrefix(c.url.Path, "/watch/vod/"); ok {
-			if _, mediaID, ok = strings.Cut(mediaID, "/"); ok {
-				resp, err := GetVOD(client, mediaID)
-				if err != nil {
-					return err
-				}
-				log.Printf("[SBS] video title: %s", resp.Info.Title)
+		if m := regexp.MustCompile(`^/watch/[^/]+/[^/]+/([^/]+)$`).FindStringSubmatch(c.url.Path); m != nil {
+			resp, err := GetVOD(client, m[1])
+			if err != nil {
+				return err
+			}
+			log.Printf("[SBS] video title: %s", resp.Info.Title)
 
-				hlsURL, err = url.Parse(resp.HLSURL())
-				if err != nil {
-					return err
-				}
+			hlsURL, err = url.Parse(resp.HLSURL())
+			if err != nil {
+				return err
+			}
+		}
+	case "programs.sbs.co.kr":
+		if m := regexp.MustCompile(`^/[^/]+/[^/]+/[^/]+/[^/]+/([^/]+)$`).FindStringSubmatch(c.url.Path); m != nil {
+			resp, err := GetVOD(client, m[1])
+			if err != nil {
+				return err
+			}
+			log.Printf("[SBS] video title: %s", resp.Info.Title)
+
+			hlsURL, err = url.Parse(resp.HLSURL())
+			if err != nil {
+				return err
 			}
 		}
 	}
