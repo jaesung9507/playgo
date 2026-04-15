@@ -7,7 +7,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/jaesung9507/playgo/stream/file"
+	"github.com/jaesung9507/playgo/stream/format"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
 	"github.com/jaesung9507/playgo/stream/platform/sbs"
@@ -39,7 +39,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 	var client Client
 	switch parsedURL.Scheme {
 	case "file":
-		client = file.New(parsedURL.Path)
+		client = format.NewLocalFile(parsedURL.Path)
 	case "rtsp", "rtsps":
 		client = rtsp.New(parsedURL)
 	case "rtmp", "rtmps":

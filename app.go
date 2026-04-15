@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/jaesung9507/playgo/stream"
+	"github.com/jaesung9507/playgo/stream/format/fmp4"
 
-	"github.com/deepch/vdk/format/mp4f"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -17,7 +17,7 @@ import (
 type App struct {
 	ctx          context.Context
 	streamClient stream.Client
-	mp4Muxer     *mp4f.Muxer
+	mp4Muxer     *fmp4.Muxer
 	streamCtx    context.Context
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
@@ -114,7 +114,7 @@ func (a *App) CloseStream() {
 	}
 }
 
-func (a *App) initStream(client stream.Client, muxer *mp4f.Muxer) {
+func (a *App) initStream(client stream.Client, muxer *fmp4.Muxer) {
 	a.streamClient = client
 	a.mp4Muxer = muxer
 }
@@ -135,8 +135,7 @@ func (a *App) streamLoop() {
 					packetAV.CompositionTime = 0
 				}
 
-				ready, buf, _ := a.mp4Muxer.WritePacket(*packetAV, false)
-				if ready {
+				if buf, _ := a.mp4Muxer.WritePacket(*packetAV); buf != nil {
 					runtime.EventsEmit(a.ctx, "OnFrame", buf)
 				}
 			}
@@ -173,12 +172,13 @@ func (a *App) PlayStream(url string) (result bool) {
 		return false
 	}
 
-	muxer := mp4f.NewMuxer(nil)
-	if err = muxer.WriteHeader(codecData); err != nil {
+	muxer := fmp4.NewMuxer()
+	meta, init, err := muxer.WriteHeader(codecData)
+	if err != nil {
 		a.MsgBox(err.Error())
 		return false
 	}
-	meta, init := muxer.GetInit(codecData)
+
 	a.initStream(client, muxer)
 	runtime.EventsEmit(a.ctx, "OnInit", meta, init)
 

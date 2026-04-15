@@ -1,4 +1,4 @@
-package file
+package format
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ type LocalFile struct {
 	packetQueue chan *av.Packet
 }
 
-func New(filePath string) *LocalFile {
+func NewLocalFile(filePath string) *LocalFile {
 	switch runtime.GOOS {
 	case "windows":
 		if len(filePath) > 0 && filePath[0] == '/' {
