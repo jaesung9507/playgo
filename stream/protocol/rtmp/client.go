@@ -24,47 +24,53 @@ const (
 	DefaultRtmpsPort = ":443"
 )
 
-type RTMPClient struct {
+type Client struct {
 	url         *url.URL
 	client      *gortmplib.Client
 	signal      chan any
 	packetQueue chan *av.Packet
 }
 
-func New(parsedUrl *url.URL) *RTMPClient {
-	return &RTMPClient{
+func New(parsedUrl *url.URL) *Client {
+	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *av.Packet),
 	}
 }
 
-func (r *RTMPClient) Dial() error {
-	if _, _, err := net.SplitHostPort(r.url.Host); err != nil {
-		if r.url.Scheme == "rtmps" {
-			r.url.Host += DefaultRtmpsPort
+func (c *Client) Dial() error {
+	if _, _, err := net.SplitHostPort(c.url.Host); err != nil {
+		if c.url.Scheme == "rtmps" {
+			c.url.Host += DefaultRtmpsPort
 		} else {
-			r.url.Host += DefaultRtmpPort
+			c.url.Host += DefaultRtmpPort
 		}
 	}
 
-	r.client = &gortmplib.Client{
-		URL: r.url, Publish: false,
+	client := &gortmplib.Client{
+		URL:     c.url,
+		Publish: false,
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
 
-	return r.client.Initialize(context.Background())
+	if err := client.Initialize(context.Background()); err != nil {
+		return err
+	}
+	c.client = client
+
+	return nil
 }
 
-func (r *RTMPClient) Close() {
-	if r.client != nil {
-		r.client.Close()
+func (c *Client) Close() {
+	if c.client != nil {
+		c.client.Close()
 	}
 }
 
-func (r *RTMPClient) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
+func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
 	var isKeyFrame bool
 	buf := bytes.NewBuffer(nil)
 	for _, nalu := range au {
@@ -82,7 +88,7 @@ func (r *RTMPClient) onDataH26x(index int8, pts, dts time.Duration, au [][]byte)
 	}
 
 	if buf := buf.Bytes(); len(buf) > 0 {
-		r.packetQueue <- &av.Packet{
+		c.packetQueue <- &av.Packet{
 			Idx:             index,
 			IsKeyFrame:      isKeyFrame,
 			CompositionTime: pts - dts,
@@ -92,8 +98,8 @@ func (r *RTMPClient) onDataH26x(index int8, pts, dts time.Duration, au [][]byte)
 	}
 }
 
-func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
-	reader := &gortmplib.Reader{Conn: r.client}
+func (c *Client) CodecData() ([]av.CodecData, error) {
+	reader := &gortmplib.Reader{Conn: c.client}
 	if err := reader.Initialize(); err != nil {
 		return nil, err
 	}
@@ -107,14 +113,14 @@ func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
 				return nil, err
 			}
 			codecs = append(codecs, h264Codec)
-			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { r.onDataH26x(int8(index), pts, dts, au) })
+			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *format.H265:
 			h265Codec, err := h265parser.NewCodecDataFromVPSAndSPSAndPPS(track.VPS, track.SPS, track.PPS)
 			if err != nil {
 				return nil, err
 			}
 			codecs = append(codecs, h265Codec)
-			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { r.onDataH26x(int8(index), pts, dts, au) })
+			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *format.MPEG4Audio:
 			config, err := track.Config.Marshal()
 			if err != nil {
@@ -125,7 +131,7 @@ func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
 				return nil, err
 			}
 			codecs = append(codecs, aacCodec)
-			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { r.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
+			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { c.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
 		default:
 			return nil, fmt.Errorf("unsupported codec: %T", track)
 		}
@@ -133,9 +139,9 @@ func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
 
 	go func() {
 		for {
-			_ = r.client.NetConn().SetReadDeadline(time.Now().Add(30 * time.Second))
+			_ = c.client.NetConn().SetReadDeadline(time.Now().Add(30 * time.Second))
 			if err := reader.Read(); err != nil {
-				r.signal <- err
+				c.signal <- err
 				return
 			}
 		}
@@ -144,10 +150,10 @@ func (r *RTMPClient) CodecData() ([]av.CodecData, error) {
 	return codecs, nil
 }
 
-func (r *RTMPClient) PacketQueue() <-chan *av.Packet {
-	return r.packetQueue
+func (c *Client) PacketQueue() <-chan *av.Packet {
+	return c.packetQueue
 }
 
-func (r *RTMPClient) CloseCh() <-chan any {
-	return r.signal
+func (c *Client) CloseCh() <-chan any {
+	return c.signal
 }
