@@ -34,7 +34,7 @@ func main() {
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
 				Title:   "PlayGo",
-				Message: "© 2023-2025 Jae-Sung",
+				Message: "© 2023-2026 Jae-Sung",
 				Icon:    icon,
 			},
 		},
