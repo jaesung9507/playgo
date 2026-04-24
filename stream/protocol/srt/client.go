@@ -3,9 +3,9 @@ package srt
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
@@ -23,7 +23,7 @@ import (
 
 type Client struct {
 	url         *url.URL
-	reader      *mpegts.Reader
+	conn        srt.Conn
 	signal      chan any
 	packetQueue chan *av.Packet
 }
@@ -56,13 +56,8 @@ func (c *Client) Dial() error {
 		return err
 	}
 
-	conn, err := srt.Dial(c.url.Scheme, c.url.Host, *cfg)
+	c.conn, err = srt.Dial(c.url.Scheme, c.url.Host, *cfg)
 	if err != nil {
-		return err
-	}
-
-	c.reader = &mpegts.Reader{R: conn}
-	if err = c.reader.Initialize(); err != nil {
 		return err
 	}
 
@@ -71,22 +66,25 @@ func (c *Client) Dial() error {
 
 func (c *Client) Close() {
 	log.Print("[SRT] close")
-	if c.reader != nil {
-		if closer, ok := c.reader.R.(io.ReadCloser); ok {
-			closer.Close()
-		}
+	if c.conn != nil {
+		c.conn.Close()
 	}
 }
 
 func (c *Client) CodecData() ([]av.CodecData, error) {
-	tracks := c.reader.Tracks()
+	reader := &mpegts.Reader{R: c.conn}
+	if err := reader.Initialize(); err != nil {
+		return nil, err
+	}
+
+	tracks := reader.Tracks()
 	result := make([]av.CodecData, len(tracks))
 	for i, track := range tracks {
 		log.Printf("[SRT] on track %d: %T", i, track.Codec)
 		switch codec := track.Codec.(type) {
 		case *codecs.H264:
 			var sps, pps []byte
-			c.reader.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
+			reader.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
 				for _, nalu := range au {
 					var isKeyFrame bool
 					switch h264.NALUType(nalu[0] & 0x1F) {
@@ -127,7 +125,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			})
 		case *codecs.H265:
 			var vps, sps, pps []byte
-			c.reader.OnDataH265(track, func(pts, dts int64, au [][]byte) error {
+			reader.OnDataH265(track, func(pts, dts int64, au [][]byte) error {
 				for _, nalu := range au {
 					var isKeyFrame bool
 					naluType := h265.NALUType((nalu[0] >> 1) & 0x3F)
@@ -184,7 +182,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			result[i] = aacCodec
 			log.Printf("[SRT] track %d: AAC codec ready", i)
 
-			c.reader.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) error {
+			reader.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) error {
 				for j, au := range aus {
 					delta := time.Duration(j) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
 					c.packetQueue <- &av.Packet{
@@ -211,14 +209,14 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 	}
 
 	for !isReady() {
-		if err := c.reader.Read(); err != nil {
+		if err := reader.Read(); err != nil {
 			return nil, err
 		}
 	}
 
 	go func() {
 		for {
-			if err := c.reader.Read(); err != nil {
+			if err := reader.Read(); err != nil {
 				c.signal <- err
 				return
 			}
@@ -234,4 +232,18 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 
 func (c *Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	crypto := reflect.ValueOf(c.conn).Elem().FieldByName("crypto")
+	if crypto.IsValid() && !crypto.IsNil() {
+		keyLength := crypto.Elem().Elem().FieldByName("keyLength")
+		if keyLength.IsValid() && keyLength.CanInt() {
+			return true, true, map[string]string{
+				"Cipher": fmt.Sprintf("AES-%d", keyLength.Int()*8),
+			}
+		}
+	}
+
+	return false, false, nil
 }

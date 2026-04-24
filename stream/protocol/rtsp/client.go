@@ -2,7 +2,6 @@ package rtsp
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -10,6 +9,8 @@ import (
 	"net/url"
 	"slices"
 	"time"
+
+	"github.com/jaesung9507/playgo/secure"
 
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
@@ -32,6 +33,7 @@ type Client struct {
 	client      *gortsplib.Client
 	signal      chan any
 	packetQueue chan *av.Packet
+	tls         secure.TLS
 }
 
 func New(parsedUrl *url.URL) *Client {
@@ -60,11 +62,9 @@ func (c *Client) Dial() error {
 	}
 
 	c.client = &gortsplib.Client{
-		Scheme: u.Scheme,
-		Host:   host,
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		Scheme:    u.Scheme,
+		Host:      host,
+		TLSConfig: c.tls.Config(),
 	}
 
 	return c.client.Start()
@@ -216,4 +216,8 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 
 func (c *Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	return c.tls.Info()
 }

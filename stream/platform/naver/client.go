@@ -1,7 +1,6 @@
 package naver
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
@@ -38,9 +38,7 @@ func New(parsedURL *url.URL) *Client {
 func (c *Client) Dial() error {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: (&secure.TLS{}).Config(),
 		},
 	}
 
@@ -357,4 +355,16 @@ func (c *Client) CloseCh() <-chan any {
 	}
 
 	return nil
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	if c.hlsClient != nil {
+		return c.hlsClient.Secure()
+	}
+
+	if c.httpClient != nil {
+		return c.httpClient.Secure()
+	}
+
+	return false, false, nil
 }

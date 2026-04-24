@@ -2,7 +2,6 @@ package hls
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -11,6 +10,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/jaesung9507/playgo/secure"
 
 	"github.com/bluenviron/gohlslib/v2"
 	"github.com/bluenviron/gohlslib/v2/pkg/codecs"
@@ -28,6 +29,7 @@ type Client struct {
 	client      *gohlslib.Client
 	signal      chan any
 	packetQueue chan *av.Packet
+	tls         secure.TLS
 
 	ready     bool
 	readyCh   chan []av.CodecData
@@ -62,9 +64,7 @@ func (c *Client) Dial() error {
 		URI: c.url.String(),
 		HTTPClient: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+				TLSClientConfig: c.tls.Config(),
 			},
 		},
 		OnRequest: func(r *http.Request) {
@@ -232,4 +232,8 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 
 func (c *Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	return c.tls.Info()
 }

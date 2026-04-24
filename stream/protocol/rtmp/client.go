@@ -3,12 +3,14 @@ package rtmp
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"time"
+
+	"github.com/jaesung9507/playgo/secure"
 
 	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
@@ -29,6 +31,7 @@ type Client struct {
 	client      *gortmplib.Client
 	signal      chan any
 	packetQueue chan *av.Packet
+	tls         secure.TLS
 }
 
 func New(parsedUrl *url.URL) *Client {
@@ -40,6 +43,7 @@ func New(parsedUrl *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
+	log.Printf("[RTMP] dial: %s", c.url.String())
 	if _, _, err := net.SplitHostPort(c.url.Host); err != nil {
 		if c.url.Scheme == "rtmps" {
 			c.url.Host += DefaultRtmpsPort
@@ -49,11 +53,9 @@ func (c *Client) Dial() error {
 	}
 
 	client := &gortmplib.Client{
-		URL:     c.url,
-		Publish: false,
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		URL:       c.url,
+		Publish:   false,
+		TLSConfig: c.tls.Config(),
 	}
 
 	if err := client.Initialize(context.Background()); err != nil {
@@ -65,6 +67,7 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) Close() {
+	log.Print("[RTMP] close")
 	if c.client != nil {
 		c.client.Close()
 	}
@@ -106,6 +109,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 
 	var codecs []av.CodecData
 	for index, track := range reader.Tracks() {
+		log.Printf("[RTMP] on track %d: %T", index, track)
 		switch track := track.(type) {
 		case *format.H264:
 			h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(track.SPS, track.PPS)
@@ -113,6 +117,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 				return nil, err
 			}
 			codecs = append(codecs, h264Codec)
+			log.Printf("[RTMP] track %d: H264 codec ready", index)
 			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *format.H265:
 			h265Codec, err := h265parser.NewCodecDataFromVPSAndSPSAndPPS(track.VPS, track.SPS, track.PPS)
@@ -120,6 +125,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 				return nil, err
 			}
 			codecs = append(codecs, h265Codec)
+			log.Printf("[RTMP] track %d: H265 codec ready", index)
 			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *format.MPEG4Audio:
 			config, err := track.Config.Marshal()
@@ -131,6 +137,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 				return nil, err
 			}
 			codecs = append(codecs, aacCodec)
+			log.Printf("[RTMP] track %d: AAC codec ready", index)
 			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { c.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
 		default:
 			return nil, fmt.Errorf("unsupported codec: %T", track)
@@ -156,4 +163,8 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 
 func (c *Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	return c.tls.Info()
 }

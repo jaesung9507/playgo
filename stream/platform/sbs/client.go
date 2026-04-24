@@ -1,7 +1,6 @@
 package sbs
 
 import (
-	"crypto/tls"
 	"errors"
 	"log"
 	"net/http"
@@ -9,8 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/deepch/vdk/av"
+	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
+
+	"github.com/deepch/vdk/av"
 )
 
 type Client struct {
@@ -28,9 +29,7 @@ func New(parsedURL *url.URL) *Client {
 func (c *Client) Dial() error {
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: (&secure.TLS{}).Config(),
 		},
 	}
 
@@ -116,4 +115,12 @@ func (c *Client) CloseCh() <-chan any {
 	}
 
 	return nil
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	if c.hlsClient != nil {
+		return c.hlsClient.Secure()
+	}
+
+	return false, false, nil
 }

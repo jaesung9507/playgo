@@ -1,7 +1,6 @@
 package tiktok
 
 import (
-	"crypto/tls"
 	"errors"
 	"log"
 	"net/http"
@@ -9,14 +8,17 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/deepch/vdk/av"
+	"github.com/jaesung9507/playgo/secure"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+
+	"github.com/deepch/vdk/av"
 )
 
 type Client struct {
 	url       *url.URL
 	mp4Client *httpStream.MP4Client
 	flvClient *httpStream.Client
+	tls       *secure.TLS
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -35,11 +37,10 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (c *Client) Dial() error {
+	var tls secure.TLS
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: tls.Config(),
 		},
 	}
 	client.Jar, _ = cookiejar.New(nil)
@@ -71,7 +72,7 @@ func (c *Client) Dial() error {
 	if mp4URL != nil {
 		c.mp4Client = httpStream.NewMP4Client(mp4URL)
 		client.Transport = &transport{Transport: client.Transport}
-
+		c.tls = &tls
 		return c.mp4Client.DialWithHTTPClient(client)
 	} else if flvURL != nil {
 		c.flvClient = httpStream.New(flvURL)
@@ -126,4 +127,20 @@ func (c *Client) CloseCh() <-chan any {
 	}
 
 	return nil
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	if c.tls != nil {
+		return c.tls.Info()
+	}
+
+	if c.mp4Client != nil {
+		return c.mp4Client.Secure()
+	}
+
+	if c.flvClient != nil {
+		return c.flvClient.Secure()
+	}
+
+	return false, false, nil
 }

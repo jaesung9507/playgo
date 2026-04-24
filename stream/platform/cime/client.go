@@ -1,16 +1,17 @@
 package cime
 
 import (
-	"crypto/tls"
 	"errors"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/deepch/vdk/av"
+	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+
+	"github.com/deepch/vdk/av"
 )
 
 type Client struct {
@@ -29,9 +30,7 @@ func New(parsedURL *url.URL) *Client {
 func (c *Client) Dial() error {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: (&secure.TLS{}).Config(),
 		},
 	}
 
@@ -129,4 +128,16 @@ func (c *Client) CloseCh() <-chan any {
 	}
 
 	return nil
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	if c.hlsClient != nil {
+		return c.hlsClient.Secure()
+	}
+
+	if c.httpClient != nil {
+		return c.httpClient.Secure()
+	}
+
+	return false, false, nil
 }

@@ -28,6 +28,7 @@ type Client interface {
 	CodecData() ([]av.CodecData, error)
 	PacketQueue() <-chan *av.Packet
 	CloseCh() <-chan any
+	Secure() (bool, bool, map[string]string)
 }
 
 func Dial(ctx context.Context, streamURL string) (Client, error) {

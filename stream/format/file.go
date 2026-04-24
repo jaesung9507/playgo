@@ -103,3 +103,7 @@ func (f *LocalFile) PacketQueue() <-chan *av.Packet {
 func (f *LocalFile) CloseCh() <-chan any {
 	return f.signal
 }
+
+func (f *LocalFile) Secure() (bool, bool, map[string]string) {
+	return false, false, nil
+}

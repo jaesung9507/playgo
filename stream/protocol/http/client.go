@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+
+	"github.com/jaesung9507/playgo/secure"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
@@ -26,6 +27,7 @@ type Client struct {
 	signal      chan any
 	packetQueue chan *av.Packet
 	isLive      bool
+	tls         secure.TLS
 }
 
 func New(parsedUrl *url.URL) *Client {
@@ -67,9 +69,7 @@ func (c *Client) Dial() error {
 
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: c.tls.Config(),
 		},
 	}
 	resp, err := client.Get(c.url.String())
@@ -128,4 +128,8 @@ func (c *Client) PacketQueue() <-chan *av.Packet {
 
 func (c *Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	return c.tls.Info()
 }

@@ -1,7 +1,6 @@
 package youtube
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -9,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
@@ -30,9 +30,7 @@ func (c *Client) Dial() error {
 	client := youtube.Client{
 		HTTPClient: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+				TLSClientConfig: (&secure.TLS{}).Config(),
 			},
 		},
 	}
@@ -124,4 +122,16 @@ func (c *Client) CloseCh() <-chan any {
 	}
 
 	return nil
+}
+
+func (c *Client) Secure() (bool, bool, map[string]string) {
+	if c.hlsClient != nil {
+		return c.hlsClient.Secure()
+	}
+
+	if c.mp4Client != nil {
+		return c.mp4Client.Secure()
+	}
+
+	return false, false, nil
 }

@@ -179,6 +179,9 @@ func (a *App) PlayStream(url string) (result bool) {
 		return false
 	}
 
+	secured, trusted, secureInfo := client.Secure()
+	runtime.EventsEmit(a.ctx, "OnSecureInfo", secured, trusted, secureInfo)
+
 	a.initStream(client, muxer)
 	runtime.EventsEmit(a.ctx, "OnInit", meta, init)
 

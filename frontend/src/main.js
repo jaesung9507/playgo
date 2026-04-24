@@ -1,6 +1,10 @@
 import './style.css';
 import './app.css';
 
+import EarthIcon from '~icons/mdi/earth';
+import LockIcon from '~icons/mdi/lock';
+import LockOffIcon from '~icons/mdi/lock-off';
+
 import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, MsgBox, Quit} from '../wailsjs/go/main/App';
 import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
 
@@ -14,7 +18,8 @@ const storageKeyAlwaysOnTop = "playgo:setting:alwaysOnTop";
 
 const btnPlayGo = document.getElementById("btnPlayGo");
 const btnReconnect = document.getElementById("btnReconnect");
-const inputUrl = document.getElementById("inputUrl");
+const inputURL = document.getElementById("inputURL");
+const iconURL = document.getElementById("iconURL");
 const elVideo = document.getElementById("elVideo");
 const imgPoster = document.getElementById("imgPoster");
 const btnMenu = document.getElementById("btnMenu");
@@ -23,10 +28,16 @@ const menuOpenFile = document.getElementById("menuOpenFile");
 const menuAlwaysOnTop = document.getElementById("menuAlwaysOnTop");
 const menuQuit = document.getElementById("menuQuit");
 
+function setURLIcon(svg, title = "", color = "") {
+    iconURL.innerHTML = svg;
+    iconURL.title = title;
+    iconURL.style.color = color;
+}
+
 function initialize() {
     const lastURL = localStorage.getItem(storageKeyURL);
     if (lastURL) {
-        inputUrl.value = lastURL;
+        inputURL.value = lastURL;
     }
 
     const isAlwaysOnTop = localStorage.getItem(storageKeyAlwaysOnTop);
@@ -34,25 +45,27 @@ function initialize() {
         SetAlwaysOnTop(true);
         menuAlwaysOnTop.classList.add("checked");
     }
+
+    setURLIcon(EarthIcon);
 }
 
 function onPlayGo() {
     if (btnPlayGo.innerText !== "PlayGo") {
         CloseStream();
     } else {
-        const url = inputUrl.value;
+        const url = inputURL.value;
         if (!url) {
             return;
         }
 
         localStorage.setItem(storageKeyURL, url);
         btnPlayGo.innerText = "Cancel";
-        inputUrl.disabled = true;
+        inputURL.disabled = true;
         menuOpenFile.classList.add("disabled");
         PlayStream(url).then(ok => {
             if (!ok) {
                 btnPlayGo.innerText = "PlayGo";
-                inputUrl.disabled = false;
+                inputURL.disabled = false;
                 menuOpenFile.classList.remove("disabled");
             }
         });
@@ -84,7 +97,7 @@ menuOpenFile.addEventListener("click", () => {
     if (!menuOpenFile.classList.contains("disabled")) {
         OpenFile().then(filePath => {
             if (filePath) {
-                inputUrl.value = filePath;
+                inputURL.value = filePath;
                 onPlayGo();
             }
         });
@@ -100,7 +113,7 @@ menuAlwaysOnTop.addEventListener("click", () => {
 
 menuQuit.addEventListener("click", Quit);
 
-inputUrl.addEventListener("keydown", (event) => {
+inputURL.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
         onPlayGo();
@@ -134,11 +147,27 @@ function resetVideo() {
     elVideo.currentTime = 0;
     elVideo.load();
 
-    inputUrl.disabled = false;
+    inputURL.disabled = false;
     menuOpenFile.classList.remove("disabled");
     btnPlayGo.innerText = "PlayGo";
     btnReconnect.disabled = true;
+
+    setURLIcon(EarthIcon);
 }
+
+EventsOn("OnSecureInfo", function (secured, trusted, info) {
+    if (secured) {
+        if (trusted) {
+            setURLIcon(LockIcon, "Connection secure\n\n" +
+                Object.entries(info).map(([k, v]) => `${k}: ${v}`).join("\n"));
+        } else {
+            setURLIcon(LockIcon, "Connection not verified\n\n" +
+                Object.entries(info).map(([k, v]) => `${k}: ${v}`).join("\n"), "firebrick");
+        }
+    } else {
+        setURLIcon(LockOffIcon, "Connection not secure", "firebrick");
+    }
+});
 
 EventsOn("OnInit", function (meta, init) {
     btnPlayGo.innerText = "Stop";

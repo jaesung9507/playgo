@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/mp4"
+	"github.com/jaesung9507/playgo/secure"
 )
 
 type MP4Client struct {
@@ -22,6 +22,7 @@ type MP4Client struct {
 	demuxer     av.Demuxer
 	signal      chan any
 	packetQueue chan *av.Packet
+	tls         secure.TLS
 }
 
 func NewMP4Client(parsedUrl *url.URL) *MP4Client {
@@ -39,9 +40,7 @@ func (c *MP4Client) DialWithHTTPClient(client *http.Client) error {
 func (c *MP4Client) Dial() error {
 	return c.dial(&http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: c.tls.Config(),
 		},
 	})
 }
@@ -130,4 +129,8 @@ func (c *MP4Client) PacketQueue() <-chan *av.Packet {
 
 func (c *MP4Client) CloseCh() <-chan any {
 	return c.signal
+}
+
+func (c *MP4Client) Secure() (bool, bool, map[string]string) {
+	return c.tls.Info()
 }
