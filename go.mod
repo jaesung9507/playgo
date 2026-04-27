@@ -7,7 +7,7 @@ require (
 	github.com/bluenviron/gortmplib v0.1.2
 	github.com/bluenviron/gortsplib/v5 v5.2.1
 	github.com/bluenviron/mediacommon/v2 v2.8.3
-	github.com/datarhei/gosrt v0.9.0
+	github.com/datarhei/gosrt v0.10.0
 	github.com/deepch/vdk v0.0.20
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
 	github.com/jaesung9507/nvver v1.3.2
@@ -56,7 +56,7 @@ require (
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 )
 
