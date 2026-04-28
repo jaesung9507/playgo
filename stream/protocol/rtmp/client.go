@@ -13,7 +13,7 @@ import (
 	"github.com/jaesung9507/playgo/secure"
 
 	"github.com/bluenviron/gortmplib"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/codec/aacparser"
@@ -107,28 +107,28 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 		return nil, err
 	}
 
-	var codecs []av.CodecData
+	var result []av.CodecData
 	for index, track := range reader.Tracks() {
-		log.Printf("[RTMP] on track %d: %T", index, track)
-		switch track := track.(type) {
-		case *format.H264:
-			h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(track.SPS, track.PPS)
+		log.Printf("[RTMP] on track %d: %T", index, track.Codec)
+		switch codec := track.Codec.(type) {
+		case *codecs.H264:
+			h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(codec.SPS, codec.PPS)
 			if err != nil {
 				return nil, err
 			}
-			codecs = append(codecs, h264Codec)
+			result = append(result, h264Codec)
 			log.Printf("[RTMP] track %d: H264 codec ready", index)
 			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
-		case *format.H265:
-			h265Codec, err := h265parser.NewCodecDataFromVPSAndSPSAndPPS(track.VPS, track.SPS, track.PPS)
+		case *codecs.H265:
+			h265Codec, err := h265parser.NewCodecDataFromVPSAndSPSAndPPS(codec.VPS, codec.SPS, codec.PPS)
 			if err != nil {
 				return nil, err
 			}
-			codecs = append(codecs, h265Codec)
+			result = append(result, h265Codec)
 			log.Printf("[RTMP] track %d: H265 codec ready", index)
 			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
-		case *format.MPEG4Audio:
-			config, err := track.Config.Marshal()
+		case *codecs.MPEG4Audio:
+			config, err := codec.Config.Marshal()
 			if err != nil {
 				return nil, err
 			}
@@ -136,7 +136,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			if err != nil {
 				return nil, err
 			}
-			codecs = append(codecs, aacCodec)
+			result = append(result, aacCodec)
 			log.Printf("[RTMP] track %d: AAC codec ready", index)
 			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { c.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
 		default:
@@ -154,7 +154,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 		}
 	}()
 
-	return codecs, nil
+	return result, nil
 }
 
 func (c *Client) PacketQueue() <-chan *av.Packet {
