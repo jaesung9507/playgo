@@ -5,14 +5,14 @@ go 1.25.0
 require (
 	github.com/bluenviron/gohlslib/v2 v2.2.9
 	github.com/bluenviron/gortmplib v0.3.1
-	github.com/bluenviron/gortsplib/v5 v5.2.1
+	github.com/bluenviron/gortsplib/v5 v5.5.2
 	github.com/bluenviron/mediacommon/v2 v2.8.3
 	github.com/datarhei/gosrt v0.10.0
 	github.com/deepch/vdk v0.0.20
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
 	github.com/jaesung9507/nvver v1.3.2
 	github.com/kkdai/youtube/v2 v2.10.5
-	github.com/pion/rtp v1.8.26
+	github.com/pion/rtp v1.10.2
 	github.com/wailsapp/wails/v2 v2.11.0
 )
 
@@ -42,9 +42,9 @@ require (
 	github.com/pion/logging v0.2.4 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.16 // indirect
-	github.com/pion/sdp/v3 v3.0.16 // indirect
-	github.com/pion/srtp/v3 v3.0.9 // indirect
-	github.com/pion/transport/v3 v3.1.1 // indirect
+	github.com/pion/sdp/v3 v3.0.18 // indirect
+	github.com/pion/srtp/v3 v3.0.10 // indirect
+	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -54,10 +54,10 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.23 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )
 
 // replace github.com/wailsapp/wails/v2 v2.6.0 => /home/jaesung/go/pkg/mod
