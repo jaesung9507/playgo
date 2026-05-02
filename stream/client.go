@@ -10,6 +10,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/format"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
+	"github.com/jaesung9507/playgo/stream/platform/pandatv"
 	"github.com/jaesung9507/playgo/stream/platform/popkontv"
 	"github.com/jaesung9507/playgo/stream/platform/sbs"
 	"github.com/jaesung9507/playgo/stream/platform/tiktok"
@@ -50,6 +51,8 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 		switch parsedURL.Host {
 		case "ci.me":
 			client = cime.New(parsedURL)
+		case "pandalive.co.kr", "www.pandalive.co.kr":
+			client = pandatv.New(parsedURL)
 		case "popkontv.com", "www.popkontv.com":
 			client = popkontv.New(parsedURL)
 		case "sbs.co.kr", "www.sbs.co.kr", "allvod.sbs.co.kr", "programs.sbs.co.kr":

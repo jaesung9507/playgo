@@ -59,7 +59,15 @@ func (c *Client) readyCodec(codecs []av.CodecData) {
 	})
 }
 
+func (c *Client) DialWithHeader(header map[string]string) error {
+	return c.dial(header)
+}
+
 func (c *Client) Dial() error {
+	return c.dial(nil)
+}
+
+func (c *Client) dial(header map[string]string) error {
 	c.client = &gohlslib.Client{
 		URI: c.url.String(),
 		HTTPClient: &http.Client{
@@ -70,6 +78,10 @@ func (c *Client) Dial() error {
 		OnRequest: func(r *http.Request) {
 			if r.URL.RawQuery == "" && c.url.RawQuery != "" {
 				r.URL.RawQuery = c.url.RawQuery
+			}
+
+			for k, v := range header {
+				r.Header.Set(k, v)
 			}
 		},
 	}
