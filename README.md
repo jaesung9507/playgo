@@ -20,9 +20,10 @@ PlayGo supports a wide range of streaming protocols, local file formats, and onl
 ### Local File Playback
 | Extension | Video Codec | Audio Codec |
 |--|--|--|
-| FLV | H264 | AAC |
-| TS | H264 | AAC |
-| MP4 | H264 | AAC |
+| .flv | H264 | AAC |
+| .ts | H264 | AAC |
+| .mp4 | H264 | AAC |
+| .h264 | H264 | - |
 
 ### Supported Platforms
 The following platforms are supported via direct URL input.

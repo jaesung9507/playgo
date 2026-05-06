@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/jaesung9507/playgo/stream/codec/h264"
+
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
 	"github.com/deepch/vdk/format/mp4"
@@ -47,6 +49,8 @@ func (f *LocalFile) getDemuxerFunc() (func(r io.ReadSeeker) (av.Demuxer, error),
 		return func(r io.ReadSeeker) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
 	case ".mp4":
 		return func(r io.ReadSeeker) (av.Demuxer, error) { return mp4.NewDemuxer(r), nil }, nil
+	case ".h264", ".264":
+		return func(r io.ReadSeeker) (av.Demuxer, error) { return h264.NewDemuxer(r), nil }, nil
 	}
 	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }

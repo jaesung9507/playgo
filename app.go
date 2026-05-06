@@ -37,8 +37,8 @@ func (a *App) OpenFile() string {
 		Title: "Open File",
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "Videos (*.flv;*.mp4;*.ts)",
-				Pattern:     "*.flv;*.mp4;*.ts",
+				DisplayName: "Videos (*.flv;*.mp4;*.ts;*.h264;*.264)",
+				Pattern:     "*.flv;*.mp4;*.ts;*.h264;*.264",
 			},
 		},
 	})
