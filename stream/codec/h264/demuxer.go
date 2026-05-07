@@ -14,14 +14,16 @@ type Demuxer struct {
 	r        io.Reader
 	nalus    [][]byte
 	pos      int
-	time     time.Duration
-	duration time.Duration
+	pts      int64
+	dts      *h264.DTSExtractor
+	duration int64
 }
 
 func NewDemuxer(r io.Reader) *Demuxer {
 	return &Demuxer{
 		r:        r,
-		duration: 40 * time.Millisecond,
+		duration: 3600,
+		dts:      &h264.DTSExtractor{},
 	}
 }
 
@@ -60,9 +62,11 @@ func (d *Demuxer) Streams() ([]av.CodecData, error) {
 		return nil, err
 	}
 
-	if fps := codec.FPS(); fps > 0 {
-		d.duration = time.Duration(int(time.Second) / fps)
+	if fps := int64(codec.FPS()); fps > 0 {
+		d.duration = 90000 / fps
 	}
+
+	d.dts.Initialize()
 
 	return []av.CodecData{codec}, nil
 }
@@ -97,6 +101,11 @@ func (d *Demuxer) ReadPacket() (av.Packet, error) {
 		return av.Packet{}, err
 	}
 
+	dts, err := d.dts.Extract(au, d.pts)
+	if err != nil {
+		dts = d.pts
+	}
+
 	data, err := h264.AVCC(au).Marshal()
 	if err != nil {
 		return av.Packet{}, err
@@ -105,9 +114,10 @@ func (d *Demuxer) ReadPacket() (av.Packet, error) {
 	pkt := av.Packet{
 		IsKeyFrame: h264.IsRandomAccess(au),
 		Data:       data,
-		Time:       d.time,
+		Time:       time.Duration(d.pts) * time.Second / 90000,
 	}
-	d.time += d.duration
+	pkt.CompositionTime = pkt.Time - (time.Duration(dts) * time.Second / 90000)
+	d.pts += d.duration
 
 	return pkt, nil
 }
