@@ -14,6 +14,7 @@ import (
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream/codec/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h265"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
@@ -48,6 +49,8 @@ func (c *Client) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error)
 		return func(r io.Reader) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
 	case ".h264", ".264":
 		return func(r io.Reader) (av.Demuxer, error) { return h264.NewDemuxer(r), nil }, nil
+	case ".h265", ".265", ".hevc":
+		return func(r io.Reader) (av.Demuxer, error) { return h265.NewDemuxer(r), nil }, nil
 	case ".mp4":
 		return func(r io.Reader) (av.Demuxer, error) {
 			if c.isLive {
