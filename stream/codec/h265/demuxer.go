@@ -70,6 +70,7 @@ func (d *Demuxer) Streams() ([]av.CodecData, error) {
 	}
 
 	d.dts.Initialize()
+	d.dts.Extract([][]byte{vps, sps, pps}, 0)
 
 	return []av.CodecData{codec}, nil
 }
