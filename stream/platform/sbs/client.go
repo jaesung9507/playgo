@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
+	"github.com/jaesung9507/playgo/stream/codec"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 
 	"github.com/deepch/vdk/av"
@@ -93,7 +94,7 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]codec.Codec, error) {
 	if c.hlsClient != nil {
 		return c.hlsClient.CodecData()
 	}

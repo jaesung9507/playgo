@@ -11,9 +11,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jaesung9507/playgo/secure"
+	"github.com/jaesung9507/playgo/stream/codec"
+
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/mp4"
-	"github.com/jaesung9507/playgo/secure"
 )
 
 type MP4Client struct {
@@ -91,8 +93,13 @@ func (c *MP4Client) Close() {
 	}
 }
 
-func (c *MP4Client) CodecData() ([]av.CodecData, error) {
+func (c *MP4Client) CodecData() ([]codec.Codec, error) {
 	streams, err := c.demuxer.Streams()
+	if err != nil {
+		return nil, err
+	}
+
+	codecs, err := codec.VDKCodec2Codecs(streams)
 	if err == nil {
 		go func() {
 			var baseCtsOffset time.Duration
@@ -120,7 +127,8 @@ func (c *MP4Client) CodecData() ([]av.CodecData, error) {
 			}
 		}()
 	}
-	return streams, err
+
+	return codecs, err
 }
 
 func (c *MP4Client) PacketQueue() <-chan *av.Packet {

@@ -11,15 +11,14 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
+	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream/codec/aac"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/deepch/vdk/av"
-	"github.com/deepch/vdk/codec/aacparser"
-	"github.com/deepch/vdk/codec/h264parser"
 	"github.com/pion/rtp"
 )
 
@@ -77,13 +76,13 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]codec.Codec, error) {
 	desc, _, err := c.client.Describe((*base.URL)(c.url))
 	if err != nil {
 		return nil, err
 	}
 
-	trackCodecs := make([]av.CodecData, len(desc.Medias))
+	trackCodecs := make([]codec.Codec, len(desc.Medias))
 	for i, media := range desc.Medias {
 		if _, err = c.client.Setup(desc.BaseURL, media, 0, 0); err != nil {
 			return nil, err
@@ -92,11 +91,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 		for _, f := range media.Formats {
 			switch f := f.(type) {
 			case *format.H264:
-				h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(f.SPS, f.PPS)
-				if err != nil {
-					return nil, err
-				}
-				trackCodecs[i] = h264Codec
+				trackCodecs[i] = &h264.Codec{SPS: f.SPS, PPS: f.PPS}
 				log.Printf("[RTSP] track %d: H264 codec ready", i)
 
 				dec, err := f.CreateDecoder()
@@ -128,12 +123,16 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 					buf.Reset()
 					var isKeyFrame bool
 					for _, nalu := range au {
-						switch h264.NALUType(nalu[0] & 0x1F) {
-						case h264.NALUTypeSPS:
+						if len(nalu) <= 0 {
+							continue
+						}
+
+						switch h264.ParseNALUType(nalu[0]) {
+						case h264.NALUnitSPS:
 							f.SPS = nalu
-						case h264.NALUTypePPS:
+						case h264.NALUnitPPS:
 							f.PPS = nalu
-						case h264.NALUTypeIDR:
+						case h264.NALUnitIDRSlice:
 							isKeyFrame = true
 						}
 						binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
@@ -155,16 +154,11 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 					}
 				})
 			case *format.MPEG4Audio:
-				cfg, err := f.Config.Marshal()
+				asc, err := f.Config.Marshal()
 				if err != nil {
 					return nil, err
 				}
-
-				aacCodec, err := aacparser.NewCodecDataFromMPEG4AudioConfigBytes(cfg)
-				if err != nil {
-					return nil, err
-				}
-				trackCodecs[i] = aacCodec
+				trackCodecs[i] = &aac.Codec{ASC: asc, Config: *f.Config}
 				log.Printf("[RTSP] track %d: AAC codec ready", i)
 
 				dec, err := f.CreateDecoder()
@@ -185,7 +179,7 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 
 					clockRate := f.ClockRate()
 					for j, au := range aus {
-						delta := time.Duration(j) * mpeg4audio.SamplesPerAccessUnit * time.Second / time.Duration(clockRate)
+						delta := time.Duration(j) * aac.SamplesPerAccessUnit * time.Second / time.Duration(clockRate)
 						c.packetQueue <- &av.Packet{
 							Idx:  int8(i),
 							Time: (time.Duration(pts) * time.Second / time.Duration(clockRate)) + delta,

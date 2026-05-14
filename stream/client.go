@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/jaesung9507/playgo/stream/codec"
 	"github.com/jaesung9507/playgo/stream/format"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
@@ -27,7 +28,7 @@ import (
 type Client interface {
 	Dial() error
 	Close()
-	CodecData() ([]av.CodecData, error)
+	CodecData() ([]codec.Codec, error)
 	PacketQueue() <-chan *av.Packet
 	CloseCh() <-chan any
 	Secure() (bool, bool, map[string]string)
@@ -101,7 +102,7 @@ func Dial(ctx context.Context, streamURL string) (Client, error) {
 	return client, nil
 }
 
-func CodecData(ctx context.Context, client Client) (codecs []av.CodecData, err error) {
+func CodecData(ctx context.Context, client Client) (codecs []codec.Codec, err error) {
 	defer func() {
 		if err != nil {
 			client.Close()

@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
+	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream/codec/aac"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/deepch/vdk/av"
-	"github.com/deepch/vdk/codec/aacparser"
-	"github.com/deepch/vdk/codec/h264parser"
-	"github.com/deepch/vdk/codec/h265parser"
 )
 
 const (
@@ -77,9 +77,9 @@ func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
 	var isKeyFrame bool
 	buf := bytes.NewBuffer(nil)
 	for _, nalu := range au {
-		switch h264.NALUType(nalu[0] & 0x1F) {
-		case h264.NALUTypeSPS, h264.NALUTypePPS:
-		case h264.NALUTypeIDR:
+		switch h264.ParseNALUType(nalu[0]) {
+		case h264.NALUnitSPS, h264.NALUnitPPS:
+		case h264.NALUnitIDRSlice:
 			isKeyFrame = true
 			fallthrough
 		default:
@@ -101,42 +101,30 @@ func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
 	}
 }
 
-func (c *Client) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]codec.Codec, error) {
 	reader := &gortmplib.Reader{Conn: c.client}
 	if err := reader.Initialize(); err != nil {
 		return nil, err
 	}
 
-	var result []av.CodecData
+	var result []codec.Codec
 	for index, track := range reader.Tracks() {
 		log.Printf("[RTMP] on track %d: %T", index, track.Codec)
 		switch codec := track.Codec.(type) {
 		case *codecs.H264:
-			h264Codec, err := h264parser.NewCodecDataFromSPSAndPPS(codec.SPS, codec.PPS)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, h264Codec)
+			result = append(result, &h264.Codec{SPS: codec.SPS, PPS: codec.PPS})
 			log.Printf("[RTMP] track %d: H264 codec ready", index)
 			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *codecs.H265:
-			h265Codec, err := h265parser.NewCodecDataFromVPSAndSPSAndPPS(codec.VPS, codec.SPS, codec.PPS)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, h265Codec)
+			result = append(result, &h265.Codec{SPS: codec.SPS, PPS: codec.PPS})
 			log.Printf("[RTMP] track %d: H265 codec ready", index)
 			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
 		case *codecs.MPEG4Audio:
-			config, err := codec.Config.Marshal()
+			asc, err := codec.Config.Marshal()
 			if err != nil {
 				return nil, err
 			}
-			aacCodec, err := aacparser.NewCodecDataFromMPEG4AudioConfigBytes(config)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, aacCodec)
+			result = append(result, &aac.Codec{ASC: asc, Config: *codec.Config})
 			log.Printf("[RTMP] track %d: AAC codec ready", index)
 			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { c.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
 		default:

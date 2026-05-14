@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/jaesung9507/playgo/secure"
+	"github.com/jaesung9507/playgo/stream/codec"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/deepch/vdk/av"
@@ -93,7 +94,7 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]codec.Codec, error) {
 	if c.mp4Client != nil {
 		return c.mp4Client.CodecData()
 	}

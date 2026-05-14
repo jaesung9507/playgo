@@ -13,8 +13,9 @@ import (
 	"strconv"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec/h264"
-	"github.com/jaesung9507/playgo/stream/codec/h265"
+	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
@@ -109,8 +110,13 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]av.CodecData, error) {
+func (c *Client) CodecData() ([]codec.Codec, error) {
 	streams, err := c.demuxer.Streams()
+	if err != nil {
+		return nil, err
+	}
+
+	codecs, err := codec.VDKCodec2Codecs(streams)
 	if err == nil {
 		go func() {
 			for {
@@ -126,7 +132,8 @@ func (c *Client) CodecData() ([]av.CodecData, error) {
 			}
 		}()
 	}
-	return streams, err
+
+	return codecs, err
 }
 
 func (c *Client) PacketQueue() <-chan *av.Packet {

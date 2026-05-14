@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/jaesung9507/playgo/stream/codec/h264"
-	"github.com/jaesung9507/playgo/stream/codec/h265"
+	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
@@ -84,8 +85,13 @@ func (f *LocalFile) Close() {
 	}
 }
 
-func (f *LocalFile) CodecData() ([]av.CodecData, error) {
+func (f *LocalFile) CodecData() ([]codec.Codec, error) {
 	streams, err := f.demuxer.Streams()
+	if err != nil {
+		return nil, err
+	}
+
+	codecs, err := codec.VDKCodec2Codecs(streams)
 	if err == nil {
 		go func() {
 			for {
@@ -100,7 +106,8 @@ func (f *LocalFile) CodecData() ([]av.CodecData, error) {
 			}
 		}()
 	}
-	return streams, err
+
+	return codecs, err
 }
 
 func (f *LocalFile) PacketQueue() <-chan *av.Packet {

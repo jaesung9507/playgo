@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/deepch/vdk/av"
-	"github.com/deepch/vdk/codec/aacparser"
-	"github.com/deepch/vdk/codec/h264parser"
-	"github.com/deepch/vdk/codec/h265parser"
+	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream/codec/aac"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4/seekablebuffer"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mp4/codecs"
@@ -35,7 +34,7 @@ func NewMuxer() *Muxer {
 	}
 }
 
-func (m *Muxer) WriteHeader(codecData []av.CodecData) (string, []byte, error) {
+func (m *Muxer) WriteHeader(codecData []codec.Codec) (string, []byte, error) {
 	var (
 		tracks       []*fmp4.InitTrack
 		codecStrings []string
@@ -43,67 +42,37 @@ func (m *Muxer) WriteHeader(codecData []av.CodecData) (string, []byte, error) {
 
 	for i, codec := range codecData {
 		switch codec := codec.(type) {
-		case h264parser.CodecData:
+		case *h264.Codec:
 			tracks = append(tracks, &fmp4.InitTrack{
 				ID:        i + 1,
 				TimeScale: 90000,
 				Codec: &codecs.H264{
-					SPS: codec.SPS(),
-					PPS: codec.PPS(),
+					SPS: codec.SPS,
+					PPS: codec.PPS,
 				},
 			})
-
-			codecString := "avc1"
-			if sps := codec.SPS(); len(sps) >= 4 {
-				codecString = fmt.Sprintf("%s.%02X%02X%02X", codecString, sps[1], sps[2], sps[3])
-			}
-			codecStrings = append(codecStrings, codecString)
-		case h265parser.CodecData:
+		case *h265.Codec:
 			tracks = append(tracks, &fmp4.InitTrack{
 				ID:        i + 1,
 				TimeScale: 90000,
 				Codec: &codecs.H265{
-					VPS: codec.VPS(),
-					SPS: codec.SPS(),
-					PPS: codec.PPS(),
+					VPS: codec.VPS,
+					SPS: codec.SPS,
+					PPS: codec.PPS,
 				},
 			})
-
-			codecString := "hvc1"
-			var sps h265.SPS
-			if err := sps.Unmarshal(codec.SPS()); err == nil {
-				var compat uint32
-				for j := range 32 {
-					if sps.ProfileTierLevel.GeneralProfileCompatibilityFlag[j] {
-						compat |= (1 << uint(j))
-					}
-				}
-
-				tier := "L"
-				if sps.ProfileTierLevel.GeneralTierFlag != 0 {
-					tier = "H"
-				}
-
-				codecString = fmt.Sprintf("%s.%d.%X.%s%d.B0", codecString, sps.ProfileTierLevel.GeneralProfileIdc, compat, tier, sps.ProfileTierLevel.GeneralLevelIdc)
-			}
-			codecStrings = append(codecStrings, codecString)
-		case aacparser.CodecData:
-			var conf mpeg4audio.AudioSpecificConfig
-			if err := conf.Unmarshal(codec.MPEG4AudioConfigBytes()); err != nil {
-				return "", nil, fmt.Errorf("failed to unmarshal aac audio config: %w", err)
-			}
-
+		case *aac.Codec:
 			tracks = append(tracks, &fmp4.InitTrack{
 				ID:        i + 1,
-				TimeScale: uint32(codec.SampleRate()),
+				TimeScale: uint32(codec.Config.SampleRate),
 				Codec: &codecs.MPEG4Audio{
-					Config: conf,
+					Config: codec.Config,
 				},
 			})
-			codecStrings = append(codecStrings, fmt.Sprintf("mp4a.40.%d", conf.Type))
 		default:
 			return "", nil, fmt.Errorf("unsupported codec: %T", codec)
 		}
+		codecStrings = append(codecStrings, codec.CodecString())
 	}
 
 	m.tracks = tracks
