@@ -12,18 +12,18 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
+	"github.com/jaesung9507/playgo/stream/vdk"
 
-	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/mp4"
 )
 
 type MP4Client struct {
 	url         *url.URL
 	closer      io.Closer
-	demuxer     av.Demuxer
+	demuxer     stream.Demuxer
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 	tls         secure.TLS
 }
 
@@ -31,7 +31,7 @@ func NewMP4Client(parsedUrl *url.URL) *MP4Client {
 	return &MP4Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
+		packetQueue: make(chan *stream.Packet),
 	}
 }
 
@@ -77,9 +77,9 @@ func (c *MP4Client) dial(client *http.Client) error {
 		}
 		log.Print("[HTTP-MP4] finish download")
 
-		c.demuxer = mp4.NewDemuxer(bytes.NewReader(data))
+		c.demuxer = vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data)))
 	} else {
-		c.demuxer = mp4.NewDemuxer(srs)
+		c.demuxer = vdk.ToDemuxer(mp4.NewDemuxer(srs))
 		c.closer = srs
 	}
 
@@ -93,13 +93,8 @@ func (c *MP4Client) Close() {
 	}
 }
 
-func (c *MP4Client) CodecData() ([]codec.Codec, error) {
-	streams, err := c.demuxer.Streams()
-	if err != nil {
-		return nil, err
-	}
-
-	codecs, err := codec.VDKCodec2Codecs(streams)
+func (c *MP4Client) CodecData() ([]stream.Codec, error) {
+	codecs, err := c.demuxer.CodecData()
 	if err == nil {
 		go func() {
 			var baseCtsOffset time.Duration
@@ -131,7 +126,7 @@ func (c *MP4Client) CodecData() ([]codec.Codec, error) {
 	return codecs, err
 }
 
-func (c *MP4Client) PacketQueue() <-chan *av.Packet {
+func (c *MP4Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

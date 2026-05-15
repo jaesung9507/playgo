@@ -13,11 +13,11 @@ import (
 	"strconv"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
+	"github.com/jaesung9507/playgo/stream/vdk"
 
-	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
 	"github.com/deepch/vdk/format/mp4"
 	"github.com/deepch/vdk/format/ts"
@@ -26,9 +26,9 @@ import (
 type Client struct {
 	url         *url.URL
 	closer      io.Closer
-	demuxer     av.Demuxer
+	demuxer     stream.Demuxer
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 	isLive      bool
 	tls         secure.TLS
 }
@@ -37,23 +37,31 @@ func New(parsedUrl *url.URL) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
+		packetQueue: make(chan *stream.Packet),
 	}
 }
 
-func (c *Client) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error) {
+func (c *Client) getDemuxerFunc() (func(r io.Reader) (stream.Demuxer, error), error) {
 	ext := filepath.Ext(path.Base(c.url.Path))
 	switch ext {
 	case ".flv":
-		return func(r io.Reader) (av.Demuxer, error) { return flv.NewDemuxer(r), nil }, nil
+		return func(r io.Reader) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
+		}, nil
 	case ".ts":
-		return func(r io.Reader) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
+		return func(r io.Reader) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(ts.NewDemuxer(r)), nil
+		}, nil
 	case ".h264", ".264":
-		return func(r io.Reader) (av.Demuxer, error) { return h264.NewDemuxer(r), nil }, nil
+		return func(r io.Reader) (stream.Demuxer, error) {
+			return h264.NewDemuxer(r), nil
+		}, nil
 	case ".h265", ".265", ".hevc":
-		return func(r io.Reader) (av.Demuxer, error) { return h265.NewDemuxer(r), nil }, nil
+		return func(r io.Reader) (stream.Demuxer, error) {
+			return h265.NewDemuxer(r), nil
+		}, nil
 	case ".mp4":
-		return func(r io.Reader) (av.Demuxer, error) {
+		return func(r io.Reader) (stream.Demuxer, error) {
 			if c.isLive {
 				return nil, fmt.Errorf("not supported for live streams: %s", ext)
 			}
@@ -61,7 +69,7 @@ func (c *Client) getDemuxerFunc() (func(r io.Reader) (av.Demuxer, error), error)
 			if err != nil {
 				return nil, err
 			}
-			return mp4.NewDemuxer(bytes.NewReader(data)), nil
+			return vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data))), nil
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported extension: %s", ext)
@@ -110,13 +118,8 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
-	streams, err := c.demuxer.Streams()
-	if err != nil {
-		return nil, err
-	}
-
-	codecs, err := codec.VDKCodec2Codecs(streams)
+func (c *Client) CodecData() ([]stream.Codec, error) {
+	codecs, err := c.demuxer.CodecData()
 	if err == nil {
 		go func() {
 			for {
@@ -136,7 +139,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	return codecs, err
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

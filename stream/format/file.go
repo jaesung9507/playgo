@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
+	"github.com/jaesung9507/playgo/stream/vdk"
 
-	"github.com/deepch/vdk/av"
 	"github.com/deepch/vdk/format/flv"
 	"github.com/deepch/vdk/format/mp4"
 	"github.com/deepch/vdk/format/ts"
@@ -22,9 +22,9 @@ import (
 type LocalFile struct {
 	path        string
 	closer      io.Closer
-	demuxer     av.Demuxer
+	demuxer     stream.Demuxer
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 }
 
 func NewLocalFile(filePath string) *LocalFile {
@@ -38,23 +38,33 @@ func NewLocalFile(filePath string) *LocalFile {
 	return &LocalFile{
 		path:        filePath,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
+		packetQueue: make(chan *stream.Packet),
 	}
 }
 
-func (f *LocalFile) getDemuxerFunc() (func(r io.ReadSeeker) (av.Demuxer, error), error) {
+func (f *LocalFile) getDemuxerFunc() (func(r io.ReadSeeker) (stream.Demuxer, error), error) {
 	ext := filepath.Ext(path.Base(f.path))
 	switch ext {
 	case ".flv":
-		return func(r io.ReadSeeker) (av.Demuxer, error) { return flv.NewDemuxer(r), nil }, nil
+		return func(r io.ReadSeeker) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
+		}, nil
 	case ".ts":
-		return func(r io.ReadSeeker) (av.Demuxer, error) { return ts.NewDemuxer(r), nil }, nil
+		return func(r io.ReadSeeker) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(ts.NewDemuxer(r)), nil
+		}, nil
 	case ".mp4":
-		return func(r io.ReadSeeker) (av.Demuxer, error) { return mp4.NewDemuxer(r), nil }, nil
+		return func(r io.ReadSeeker) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(mp4.NewDemuxer(r)), nil
+		}, nil
 	case ".h264", ".264":
-		return func(r io.ReadSeeker) (av.Demuxer, error) { return h264.NewDemuxer(r), nil }, nil
+		return func(r io.ReadSeeker) (stream.Demuxer, error) {
+			return h264.NewDemuxer(r), nil
+		}, nil
 	case ".h265", ".265", ".hevc":
-		return func(r io.ReadSeeker) (av.Demuxer, error) { return h265.NewDemuxer(r), nil }, nil
+		return func(r io.ReadSeeker) (stream.Demuxer, error) {
+			return h265.NewDemuxer(r), nil
+		}, nil
 	}
 	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
@@ -85,13 +95,8 @@ func (f *LocalFile) Close() {
 	}
 }
 
-func (f *LocalFile) CodecData() ([]codec.Codec, error) {
-	streams, err := f.demuxer.Streams()
-	if err != nil {
-		return nil, err
-	}
-
-	codecs, err := codec.VDKCodec2Codecs(streams)
+func (f *LocalFile) CodecData() ([]stream.Codec, error) {
+	codecs, err := f.demuxer.CodecData()
 	if err == nil {
 		go func() {
 			for {
@@ -110,7 +115,7 @@ func (f *LocalFile) CodecData() ([]codec.Codec, error) {
 	return codecs, err
 }
 
-func (f *LocalFile) PacketQueue() <-chan *av.Packet {
+func (f *LocalFile) PacketQueue() <-chan *stream.Packet {
 	return f.packetQueue
 }
 

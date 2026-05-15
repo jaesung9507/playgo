@@ -5,8 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deepch/vdk/av"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
@@ -20,7 +19,7 @@ type Muxer struct {
 	tracks      []*fmp4.InitTrack
 	samples     map[int8][]*fmp4.Sample
 	baseTimes   map[int8]uint64
-	prevPackets map[int8]*av.Packet
+	prevPackets map[int8]*stream.Packet
 	sequenceNum uint32
 	maxFrames   int
 }
@@ -29,12 +28,12 @@ func NewMuxer() *Muxer {
 	return &Muxer{
 		baseTimes:   make(map[int8]uint64),
 		samples:     make(map[int8][]*fmp4.Sample),
-		prevPackets: make(map[int8]*av.Packet),
+		prevPackets: make(map[int8]*stream.Packet),
 		maxFrames:   5,
 	}
 }
 
-func (m *Muxer) WriteHeader(codecData []codec.Codec) (string, []byte, error) {
+func (m *Muxer) WriteHeader(codecData []stream.Codec) (string, []byte, error) {
 	var (
 		tracks       []*fmp4.InitTrack
 		codecStrings []string
@@ -88,7 +87,7 @@ func (m *Muxer) WriteHeader(codecData []codec.Codec) (string, []byte, error) {
 	return strings.Join(codecStrings, ","), buf.Bytes(), nil
 }
 
-func (m *Muxer) WritePacket(packet av.Packet) ([]byte, error) {
+func (m *Muxer) WritePacket(packet stream.Packet) ([]byte, error) {
 	if int(packet.Idx) >= len(m.tracks) {
 		return nil, fmt.Errorf("invalid track index: %d", packet.Idx)
 	}

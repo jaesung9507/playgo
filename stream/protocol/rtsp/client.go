@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
-	"github.com/deepch/vdk/av"
 	"github.com/pion/rtp"
 )
 
@@ -31,7 +30,7 @@ type Client struct {
 	url         *url.URL
 	client      *gortsplib.Client
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 	tls         secure.TLS
 }
 
@@ -39,7 +38,7 @@ func New(parsedUrl *url.URL) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet, 128),
+		packetQueue: make(chan *stream.Packet, 128),
 	}
 }
 
@@ -76,13 +75,13 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
+func (c *Client) CodecData() ([]stream.Codec, error) {
 	desc, _, err := c.client.Describe((*base.URL)(c.url))
 	if err != nil {
 		return nil, err
 	}
 
-	trackCodecs := make([]codec.Codec, len(desc.Medias))
+	trackCodecs := make([]stream.Codec, len(desc.Medias))
 	for i, media := range desc.Medias {
 		if _, err = c.client.Setup(desc.BaseURL, media, 0, 0); err != nil {
 			return nil, err
@@ -144,7 +143,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 						pts := time.Duration(pts) * time.Second / time.Duration(clockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(clockRate)
 
-						c.packetQueue <- &av.Packet{
+						c.packetQueue <- &stream.Packet{
 							Idx:             int8(i),
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
@@ -180,7 +179,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 					clockRate := f.ClockRate()
 					for j, au := range aus {
 						delta := time.Duration(j) * aac.SamplesPerAccessUnit * time.Second / time.Duration(clockRate)
-						c.packetQueue <- &av.Packet{
+						c.packetQueue <- &stream.Packet{
 							Idx:  int8(i),
 							Time: (time.Duration(pts) * time.Second / time.Duration(clockRate)) + delta,
 							Data: au,
@@ -204,7 +203,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	return trackCodecs, nil
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

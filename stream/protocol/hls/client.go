@@ -12,25 +12,24 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/bluenviron/gohlslib/v2"
 	"github.com/bluenviron/gohlslib/v2/pkg/codecs"
-	"github.com/deepch/vdk/av"
 )
 
 type Client struct {
 	url         *url.URL
 	client      *gohlslib.Client
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 	tls         secure.TLS
 
 	ready     bool
-	readyCh   chan []codec.Codec
+	readyCh   chan []stream.Codec
 	readyOnce sync.Once
 }
 
@@ -38,12 +37,12 @@ func New(parsedUrl *url.URL) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
-		readyCh:     make(chan []codec.Codec),
+		packetQueue: make(chan *stream.Packet),
+		readyCh:     make(chan []stream.Codec),
 	}
 }
 
-func (c *Client) readyCodec(codecs []codec.Codec) {
+func (c *Client) readyCodec(codecs []stream.Codec) {
 	for _, codec := range codecs {
 		if codec == nil {
 			return
@@ -86,7 +85,7 @@ func (c *Client) dial(header map[string]string) error {
 
 	log.Printf("[HLS] dial: %s", c.url.String())
 	c.client.OnTracks = func(tracks []*gohlslib.Track) error {
-		trackCodecs := make([]codec.Codec, len(tracks))
+		trackCodecs := make([]stream.Codec, len(tracks))
 		for i, track := range tracks {
 			log.Printf("[HLS] on track %d: %T", i, track.Codec)
 			switch codec := track.Codec.(type) {
@@ -117,7 +116,7 @@ func (c *Client) dial(header map[string]string) error {
 					if c.ready && buf.Len() > 0 {
 						pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
-						c.packetQueue <- &av.Packet{
+						c.packetQueue <- &stream.Packet{
 							Idx:             int8(i),
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
@@ -160,7 +159,7 @@ func (c *Client) dial(header map[string]string) error {
 					if c.ready && buf.Len() > 0 {
 						pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
-						c.packetQueue <- &av.Packet{
+						c.packetQueue <- &stream.Packet{
 							Idx:             int8(i),
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
@@ -182,7 +181,7 @@ func (c *Client) dial(header map[string]string) error {
 					if c.ready {
 						for j, au := range aus {
 							delta := time.Duration(j) * aac.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
-							c.packetQueue <- &av.Packet{
+							c.packetQueue <- &stream.Packet{
 								Idx:  int8(i),
 								Time: (time.Duration(pts) * time.Second / time.Duration(track.ClockRate)) + delta,
 								Data: au,
@@ -208,7 +207,7 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
+func (c *Client) CodecData() ([]stream.Codec, error) {
 	go func() {
 		c.signal <- c.client.Wait2()
 	}()
@@ -221,7 +220,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	}
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

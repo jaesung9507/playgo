@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/jaesung9507/playgo/stream"
+	"github.com/jaesung9507/playgo/stream/client"
 	"github.com/jaesung9507/playgo/stream/format/fmp4"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -129,13 +130,13 @@ func (a *App) streamLoop() {
 				return
 			case <-a.streamClient.CloseCh():
 				return
-			case packetAV := <-a.streamClient.PacketQueue():
+			case packet := <-a.streamClient.PacketQueue():
 				switch rt.GOOS {
 				case "linux":
-					packetAV.CompositionTime = 0
+					packet.CompositionTime = 0
 				}
 
-				if buf, _ := a.mp4Muxer.WritePacket(*packetAV); buf != nil {
+				if buf, _ := a.mp4Muxer.WritePacket(*packet); buf != nil {
 					runtime.EventsEmit(a.ctx, "OnFrame", buf)
 				}
 			}
@@ -146,7 +147,7 @@ func (a *App) streamLoop() {
 func (a *App) PlayStream(url string) (result bool) {
 	a.streamCtx, a.cancel = context.WithCancel(a.ctx)
 
-	client, err := stream.Dial(a.streamCtx, url)
+	c, err := client.Dial(a.streamCtx, url)
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			a.MsgBox(err.Error())
@@ -155,11 +156,11 @@ func (a *App) PlayStream(url string) (result bool) {
 	}
 	defer func() {
 		if !result {
-			client.Close()
+			c.Close()
 		}
 	}()
 
-	codecData, err := stream.CodecData(a.streamCtx, client)
+	codecData, err := client.CodecData(a.streamCtx, c)
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			a.MsgBox(err.Error())
@@ -179,10 +180,10 @@ func (a *App) PlayStream(url string) (result bool) {
 		return false
 	}
 
-	secured, trusted, secureInfo := client.Secure()
+	secured, trusted, secureInfo := c.Secure()
 	runtime.EventsEmit(a.ctx, "OnSecureInfo", secured, trusted, secureInfo)
 
-	a.initStream(client, muxer)
+	a.initStream(c, muxer)
 	runtime.EventsEmit(a.ctx, "OnInit", meta, init)
 
 	return true

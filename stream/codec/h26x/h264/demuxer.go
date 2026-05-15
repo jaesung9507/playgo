@@ -5,10 +5,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/h26x"
-
-	"github.com/deepch/vdk/av"
-	"github.com/deepch/vdk/codec/h264parser"
 )
 
 const timebase = 90000
@@ -28,8 +26,8 @@ func NewDemuxer(r io.Reader) *Demuxer {
 	}
 }
 
-func (d *Demuxer) Streams() ([]av.CodecData, error) {
-	var sps, pps []byte
+func (d *Demuxer) CodecData() ([]stream.Codec, error) {
+	var c Codec
 	for {
 		nalu, err := d.r.Read()
 		if err != nil {
@@ -41,33 +39,28 @@ func (d *Demuxer) Streams() ([]av.CodecData, error) {
 
 		switch ParseNALUType(nalu[0]) {
 		case NALUnitSPS:
-			sps = nalu
+			c.SPS = nalu
 		case NALUnitPPS:
-			pps = nalu
+			c.PPS = nalu
 		case NALUnitIDRSlice, NALUnitSlice:
-			if sps == nil || pps == nil {
+			if c.SPS == nil || c.PPS == nil {
 				return nil, fmt.Errorf("missing sps/pps before frame: nalu[0]=%d", nalu[0])
 			}
 		}
 
-		if sps != nil && pps != nil {
+		if c.SPS != nil && c.PPS != nil {
 			break
 		}
 	}
 
-	codec, err := h264parser.NewCodecDataFromSPSAndPPS(sps, pps)
-	if err != nil {
-		return nil, err
-	}
-
-	if fps := int64(codec.FPS()); fps > 0 {
-		d.duration = timebase / fps
+	if fps := c.FPS(); fps > 0 {
+		d.duration = int64(float64(timebase) / fps)
 	}
 
 	d.dts.Initialize()
-	d.dts.Extract([][]byte{sps, pps}, 0)
+	d.dts.Extract([][]byte{c.SPS, c.PPS}, 0)
 
-	return []av.CodecData{codec}, nil
+	return []stream.Codec{&c}, nil
 }
 
 func (d *Demuxer) readFrame() (au [][]byte, err error) {
@@ -89,10 +82,10 @@ func (d *Demuxer) readFrame() (au [][]byte, err error) {
 	}
 }
 
-func (d *Demuxer) ReadPacket() (av.Packet, error) {
+func (d *Demuxer) ReadPacket() (stream.Packet, error) {
 	au, err := d.readFrame()
 	if err != nil {
-		return av.Packet{}, err
+		return stream.Packet{}, err
 	}
 
 	dts, err := d.dts.Extract(au, d.pts)
@@ -102,10 +95,10 @@ func (d *Demuxer) ReadPacket() (av.Packet, error) {
 
 	data, err := AVCC(au).Marshal()
 	if err != nil {
-		return av.Packet{}, err
+		return stream.Packet{}, err
 	}
 
-	pkt := av.Packet{
+	pkt := stream.Packet{
 		IsKeyFrame: IsKeyFrame(au),
 		Data:       data,
 		Time:       time.Duration(d.pts) * time.Second / timebase,

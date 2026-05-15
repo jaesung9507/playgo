@@ -1,8 +1,9 @@
-package codec
+package vdk
 
 import (
 	"fmt"
 
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
@@ -13,12 +14,40 @@ import (
 	"github.com/deepch/vdk/codec/h265parser"
 )
 
-type Codec interface {
-	CodecString() string
+type Demuxer struct {
+	d av.Demuxer
 }
 
-func VDKCodec2Codecs(vdkCodecs []av.CodecData) ([]Codec, error) {
-	var codecs []Codec
+func (d *Demuxer) CodecData() ([]stream.Codec, error) {
+	codecs, err := d.d.Streams()
+	if err != nil {
+		return nil, err
+	}
+
+	return ToCodecs(codecs)
+}
+
+func (d *Demuxer) ReadPacket() (stream.Packet, error) {
+	p, err := d.d.ReadPacket()
+	if err != nil {
+		return stream.Packet{}, err
+	}
+
+	return stream.Packet{
+		Idx:             p.Idx,
+		IsKeyFrame:      p.IsKeyFrame,
+		Time:            p.Time,
+		CompositionTime: p.CompositionTime,
+		Data:            p.Data,
+	}, nil
+}
+
+func ToDemuxer(d av.Demuxer) stream.Demuxer {
+	return &Demuxer{d: d}
+}
+
+func ToCodecs(vdkCodecs []av.CodecData) ([]stream.Codec, error) {
+	var codecs []stream.Codec
 	for _, vdkCodec := range vdkCodecs {
 		switch vdkCodec := vdkCodec.(type) {
 		case h264parser.CodecData:

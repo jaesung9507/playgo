@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/deepch/vdk/av"
 )
 
 const (
@@ -30,7 +29,7 @@ type Client struct {
 	url         *url.URL
 	client      *gortmplib.Client
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 	tls         secure.TLS
 }
 
@@ -38,7 +37,7 @@ func New(parsedUrl *url.URL) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet),
+		packetQueue: make(chan *stream.Packet),
 	}
 }
 
@@ -91,7 +90,7 @@ func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
 	}
 
 	if buf := buf.Bytes(); len(buf) > 0 {
-		c.packetQueue <- &av.Packet{
+		c.packetQueue <- &stream.Packet{
 			Idx:             index,
 			IsKeyFrame:      isKeyFrame,
 			CompositionTime: pts - dts,
@@ -101,13 +100,13 @@ func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
+func (c *Client) CodecData() ([]stream.Codec, error) {
 	reader := &gortmplib.Reader{Conn: c.client}
 	if err := reader.Initialize(); err != nil {
 		return nil, err
 	}
 
-	var result []codec.Codec
+	var result []stream.Codec
 	for index, track := range reader.Tracks() {
 		log.Printf("[RTMP] on track %d: %T", index, track.Codec)
 		switch codec := track.Codec.(type) {
@@ -126,7 +125,9 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 			}
 			result = append(result, &aac.Codec{ASC: asc, Config: *codec.Config})
 			log.Printf("[RTMP] track %d: AAC codec ready", index)
-			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) { c.packetQueue <- &av.Packet{Idx: int8(index), Time: pts, Data: au} })
+			reader.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
+				c.packetQueue <- &stream.Packet{Idx: int8(index), Time: pts, Data: au}
+			})
 		default:
 			return nil, fmt.Errorf("unsupported codec: %T", track)
 		}
@@ -145,7 +146,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	return result, nil
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

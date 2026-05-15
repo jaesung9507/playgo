@@ -12,6 +12,30 @@ type AVCC = h264.AVCC
 type Codec struct {
 	SPS []byte
 	PPS []byte
+
+	sps *h264.SPS
+}
+
+func (c *Codec) decodeSPS() error {
+	if c.sps == nil {
+		var sps h264.SPS
+		err := sps.Unmarshal(c.SPS)
+		if err == nil {
+			c.sps = &sps
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (c *Codec) FPS() float64 {
+	if err := c.decodeSPS(); err == nil {
+		return c.sps.FPS()
+	}
+
+	return 0
 }
 
 func (c *Codec) CodecString() string {

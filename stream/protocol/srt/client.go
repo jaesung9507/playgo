@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
@@ -17,21 +17,20 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts/codecs"
 	srt "github.com/datarhei/gosrt"
-	"github.com/deepch/vdk/av"
 )
 
 type Client struct {
 	url         *url.URL
 	conn        srt.Conn
 	signal      chan any
-	packetQueue chan *av.Packet
+	packetQueue chan *stream.Packet
 }
 
 func New(parsedUrl *url.URL) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
-		packetQueue: make(chan *av.Packet, 128),
+		packetQueue: make(chan *stream.Packet, 128),
 	}
 }
 
@@ -70,14 +69,14 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
+func (c *Client) CodecData() ([]stream.Codec, error) {
 	reader := &mpegts.Reader{R: c.conn}
 	if err := reader.Initialize(); err != nil {
 		return nil, err
 	}
 
 	tracks := reader.Tracks()
-	result := make([]codec.Codec, len(tracks))
+	result := make([]stream.Codec, len(tracks))
 	for i, track := range tracks {
 		log.Printf("[SRT] on track %d: %T", i, track.Codec)
 		switch codec := track.Codec.(type) {
@@ -101,7 +100,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 						pts := time.Duration(pts) * time.Second / time.Duration(90000)
 						dts := time.Duration(dts) * time.Second / time.Duration(90000)
 
-						c.packetQueue <- &av.Packet{
+						c.packetQueue <- &stream.Packet{
 							Idx:             int8(i),
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
@@ -142,7 +141,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 							pts := time.Duration(pts) * time.Second / time.Duration(90000)
 							dts := time.Duration(dts) * time.Second / time.Duration(90000)
 
-							c.packetQueue <- &av.Packet{
+							c.packetQueue <- &stream.Packet{
 								Idx:             int8(i),
 								IsKeyFrame:      isKeyFrame,
 								CompositionTime: pts - dts,
@@ -171,7 +170,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 			reader.OnDataMPEG4Audio(track, func(pts int64, aus [][]byte) error {
 				for j, au := range aus {
 					delta := time.Duration(j) * aac.SamplesPerAccessUnit * time.Second / time.Duration(codec.Config.SampleRate)
-					c.packetQueue <- &av.Packet{
+					c.packetQueue <- &stream.Packet{
 						Idx:  int8(i),
 						Time: (time.Duration(pts) * time.Second / time.Duration(90000)) + delta,
 						Data: au,
@@ -212,7 +211,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	return result, nil
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	return c.packetQueue
 }
 

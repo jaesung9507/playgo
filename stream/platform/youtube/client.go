@@ -9,11 +9,10 @@ import (
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
-	"github.com/jaesung9507/playgo/stream/codec"
+	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
 
-	"github.com/deepch/vdk/av"
 	"github.com/kkdai/youtube/v2"
 )
 
@@ -89,7 +88,7 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) CodecData() ([]codec.Codec, error) {
+func (c *Client) CodecData() ([]stream.Codec, error) {
 	if c.hlsClient != nil {
 		return c.hlsClient.CodecData()
 	}
@@ -101,7 +100,7 @@ func (c *Client) CodecData() ([]codec.Codec, error) {
 	return nil, errors.New("not supported")
 }
 
-func (c *Client) PacketQueue() <-chan *av.Packet {
+func (c *Client) PacketQueue() <-chan *stream.Packet {
 	if c.hlsClient != nil {
 		return c.hlsClient.PacketQueue()
 	}
