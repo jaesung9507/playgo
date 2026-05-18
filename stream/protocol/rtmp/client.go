@@ -111,9 +111,21 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 		log.Printf("[RTMP] on track %d: %T", index, track.Codec)
 		switch codec := track.Codec.(type) {
 		case *codecs.H264:
-			result = append(result, &h264.Codec{SPS: codec.SPS, PPS: codec.PPS})
+			h264Codec := &h264.Codec{SPS: codec.SPS, PPS: codec.PPS}
+			result = append(result, h264Codec)
 			log.Printf("[RTMP] track %d: H264 codec ready", index)
-			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
+			reader.OnDataH264(track, func(pts, dts time.Duration, au [][]byte) {
+				isKeyFrame, data := h264Codec.ParseAUPayload(au)
+				if len(data) > 0 {
+					c.packetQueue <- &stream.Packet{
+						Idx:             int8(index),
+						IsKeyFrame:      isKeyFrame,
+						CompositionTime: pts - dts,
+						Time:            dts,
+						Data:            data,
+					}
+				}
+			})
 		case *codecs.H265:
 			result = append(result, &h265.Codec{SPS: codec.SPS, PPS: codec.PPS})
 			log.Printf("[RTMP] track %d: H265 codec ready", index)

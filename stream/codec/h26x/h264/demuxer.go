@@ -63,11 +63,11 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 	return []stream.Codec{&c}, nil
 }
 
-func (d *Demuxer) readFrame() (au [][]byte, err error) {
+func (d *Demuxer) readFrame() (isKeyFrame bool, au [][]byte, err error) {
 	for {
 		var nalu []byte
 		if nalu, err = d.r.Read(); err != nil {
-			return nil, err
+			return false, nil, err
 		}
 
 		if len(nalu) == 0 {
@@ -75,15 +75,16 @@ func (d *Demuxer) readFrame() (au [][]byte, err error) {
 		}
 		au = append(au, nalu)
 
-		switch ParseNALUType(nalu[0]) {
+		naluType := ParseNALUType(nalu[0])
+		switch naluType {
 		case NALUnitIDRSlice, NALUnitSlice:
-			return au, nil
+			return naluType.IsKeyFrame(), au, nil
 		}
 	}
 }
 
 func (d *Demuxer) ReadPacket() (stream.Packet, error) {
-	au, err := d.readFrame()
+	isKeyFrame, au, err := d.readFrame()
 	if err != nil {
 		return stream.Packet{}, err
 	}
@@ -93,13 +94,13 @@ func (d *Demuxer) ReadPacket() (stream.Packet, error) {
 		dts = d.pts
 	}
 
-	data, err := AVCC(au).Marshal()
+	data, err := h26x.AVCC(au).Marshal()
 	if err != nil {
 		return stream.Packet{}, err
 	}
 
 	pkt := stream.Packet{
-		IsKeyFrame: IsKeyFrame(au),
+		IsKeyFrame: isKeyFrame,
 		Data:       data,
 		Time:       time.Duration(d.pts) * time.Second / timebase,
 	}

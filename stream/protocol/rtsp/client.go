@@ -1,13 +1,10 @@
 package rtsp
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/jaesung9507/playgo/secure"
@@ -90,7 +87,8 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 		for _, f := range media.Formats {
 			switch f := f.(type) {
 			case *format.H264:
-				trackCodecs[i] = &h264.Codec{SPS: f.SPS, PPS: f.PPS}
+				h264Codec := &h264.Codec{SPS: f.SPS, PPS: f.PPS}
+				trackCodecs[i] = h264Codec
 				log.Printf("[RTSP] track %d: H264 codec ready", i)
 
 				dec, err := f.CreateDecoder()
@@ -102,7 +100,6 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 				dtsExtractor.Initialize()
 				dtsExtractor.Extract([][]byte{f.SPS, f.PPS}, 0)
 
-				buf := bytes.NewBuffer(nil)
 				c.client.OnPacketRTP(media, f, func(pkt *rtp.Packet) {
 					pts, ok := c.client.PacketPTS(media, pkt)
 					if !ok {
@@ -119,26 +116,8 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 						dts = pts
 					}
 
-					buf.Reset()
-					var isKeyFrame bool
-					for _, nalu := range au {
-						if len(nalu) <= 0 {
-							continue
-						}
-
-						switch h264.ParseNALUType(nalu[0]) {
-						case h264.NALUnitSPS:
-							f.SPS = nalu
-						case h264.NALUnitPPS:
-							f.PPS = nalu
-						case h264.NALUnitIDRSlice:
-							isKeyFrame = true
-						}
-						binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-						buf.Write(nalu)
-					}
-
-					if buf.Len() > 0 {
+					isKeyFrame, data := h264Codec.ParseAU(au)
+					if len(data) > 0 {
 						clockRate := time.Duration(f.ClockRate())
 						pts := time.Duration(pts) * time.Second / time.Duration(clockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(clockRate)
@@ -148,7 +127,7 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
 							Time:            pts,
-							Data:            slices.Clone(buf.Bytes()),
+							Data:            data,
 						}
 					}
 				})

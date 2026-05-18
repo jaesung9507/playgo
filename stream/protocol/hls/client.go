@@ -90,30 +90,16 @@ func (c *Client) dial(header map[string]string) error {
 			log.Printf("[HLS] on track %d: %T", i, track.Codec)
 			switch codec := track.Codec.(type) {
 			case *codecs.H264:
-				buf := bytes.NewBuffer(nil)
+				h264Codec := &h264.Codec{SPS: codec.SPS, PPS: codec.PPS}
 				c.client.OnDataH26x(track, func(pts, dts int64, au [][]byte) {
-					buf.Reset()
-					var isKeyFrame bool
-					for _, nalu := range au {
-						switch h264.ParseNALUType(nalu[0]) {
-						case h264.NALUnitSPS:
-							codec.SPS = nalu
-						case h264.NALUnitPPS:
-							codec.PPS = nalu
-						case h264.NALUnitIDRSlice:
-							isKeyFrame = true
-						}
-						binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-						buf.Write(nalu)
-					}
-
-					if trackCodecs[i] == nil && codec.SPS != nil && codec.PPS != nil {
-						trackCodecs[i] = &h264.Codec{SPS: codec.SPS, PPS: codec.PPS}
+					isKeyFrame, data := h264Codec.ParseAU(au)
+					if trackCodecs[i] == nil && h264Codec.SPS != nil && h264Codec.PPS != nil {
+						trackCodecs[i] = h264Codec
 						log.Printf("[HLS] track %d: H264 codec ready", i)
 						c.readyCodec(trackCodecs)
 					}
 
-					if c.ready && buf.Len() > 0 {
+					if c.ready && len(data) > 0 {
 						pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
 						c.packetQueue <- &stream.Packet{
@@ -121,7 +107,7 @@ func (c *Client) dial(header map[string]string) error {
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
 							Time:            dts,
-							Data:            slices.Clone(buf.Bytes()),
+							Data:            data,
 						}
 					}
 				})

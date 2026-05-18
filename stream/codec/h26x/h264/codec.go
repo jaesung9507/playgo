@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x"
 )
 
 type DTSExtractor = h264.DTSExtractor
-type AVCC = h264.AVCC
 
 type Codec struct {
 	SPS []byte
@@ -45,4 +45,44 @@ func (c *Codec) CodecString() string {
 	}
 
 	return base
+}
+
+func (c *Codec) parseAU(au [][]byte, payloadOnly bool) (bool, []byte) {
+	payload := au
+	if payloadOnly {
+		payload = make([][]byte, 0, len(au))
+	}
+
+	var isKeyFrame bool
+	for _, nalu := range au {
+		naluType := ParseNALUType(nalu[0])
+		switch naluType {
+		case NALUnitSPS:
+			c.SPS = nalu
+			if payloadOnly {
+				continue
+			}
+		case NALUnitPPS:
+			c.PPS = nalu
+			if payloadOnly {
+				continue
+			}
+		}
+
+		isKeyFrame = isKeyFrame || naluType.IsKeyFrame()
+		if payloadOnly {
+			payload = append(payload, nalu)
+		}
+	}
+
+	data, _ := h26x.AVCC(payload).Marshal()
+	return isKeyFrame, data
+}
+
+func (c *Codec) ParseAU(au [][]byte) (bool, []byte) {
+	return c.parseAU(au, false)
+}
+
+func (c *Codec) ParseAUPayload(au [][]byte) (bool, []byte) {
+	return c.parseAU(au, true)
 }

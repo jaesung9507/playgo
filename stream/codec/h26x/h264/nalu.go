@@ -17,19 +17,15 @@ const (
 	NALUnitEndStream
 )
 
-func ParseNALUType(b byte) NALUType {
-	return NALUType(b & 0x1F)
-}
-
-func IsKeyFrame(au [][]byte) bool {
-	for _, nalu := range au {
-		if len(nalu) > 0 {
-			switch ParseNALUType(nalu[0]) {
-			case NALUnitIDRSlice:
-				return true
-			}
-		}
+func (t NALUType) IsKeyFrame() bool {
+	switch t {
+	case NALUnitIDRSlice:
+		return true
 	}
 
 	return false
+}
+
+func ParseNALUType(b byte) NALUType {
+	return NALUType(b & 0x1F)
 }

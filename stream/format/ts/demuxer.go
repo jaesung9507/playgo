@@ -41,29 +41,14 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 		switch codec := track.Codec.(type) {
 		case *codecs.H264:
 			h264Codec := &h264.Codec{}
-			buf := bytes.NewBuffer(nil)
 			d.r.OnDataH264(track, func(pts, dts int64, au [][]byte) error {
-				buf.Reset()
-				var isKeyFrame bool
-				for _, nalu := range au {
-					switch h264.ParseNALUType(nalu[0]) {
-					case h264.NALUnitSPS:
-						h264Codec.SPS = nalu
-					case h264.NALUnitPPS:
-						h264Codec.PPS = nalu
-					case h264.NALUnitIDRSlice:
-						isKeyFrame = true
-					}
-					binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-					buf.Write(nalu)
-				}
-
+				isKeyFrame, data := h264Codec.ParseAU(au)
 				if result[i] == nil && h264Codec.SPS != nil && h264Codec.PPS != nil {
 					result[i] = h264Codec
 					log.Printf("[MPEG-TS] track %d: H264 codec ready", i)
 				}
 
-				if buf.Len() > 0 {
+				if len(data) > 0 {
 					pts := time.Duration(pts) * time.Second / time.Duration(90000)
 					dts := time.Duration(dts) * time.Second / time.Duration(90000)
 					d.q = append(d.q, stream.Packet{
@@ -71,7 +56,7 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 						IsKeyFrame:      isKeyFrame,
 						CompositionTime: pts - dts,
 						Time:            dts,
-						Data:            slices.Clone(buf.Bytes()),
+						Data:            data,
 					})
 				}
 
