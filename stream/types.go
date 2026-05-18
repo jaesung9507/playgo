@@ -29,3 +29,13 @@ type Client interface {
 	CloseCh() <-chan any
 	Secure() (bool, bool, map[string]string)
 }
+
+func IsCodecReady(codecs []Codec) bool {
+	for _, codec := range codecs {
+		if codec == nil {
+			return false
+		}
+	}
+
+	return true
+}

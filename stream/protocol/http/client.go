@@ -16,11 +16,11 @@ import (
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
+	"github.com/jaesung9507/playgo/stream/format/ts"
 	"github.com/jaesung9507/playgo/stream/vdk"
 
 	"github.com/deepch/vdk/format/flv"
 	"github.com/deepch/vdk/format/mp4"
-	"github.com/deepch/vdk/format/ts"
 )
 
 type Client struct {
@@ -50,7 +50,7 @@ func (c *Client) getDemuxerFunc() (func(r io.Reader) (stream.Demuxer, error), er
 		}, nil
 	case ".ts":
 		return func(r io.Reader) (stream.Demuxer, error) {
-			return vdk.ToDemuxer(ts.NewDemuxer(r)), nil
+			return ts.NewDemuxer(r), nil
 		}, nil
 	case ".h264", ".264":
 		return func(r io.Reader) (stream.Demuxer, error) {
