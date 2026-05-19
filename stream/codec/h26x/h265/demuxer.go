@@ -1,8 +1,6 @@
 package h265
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"time"
@@ -67,11 +65,11 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 	return []stream.Codec{&c}, nil
 }
 
-func (d *Demuxer) readFrame() (au [][]byte, err error) {
+func (d *Demuxer) readFrame() (isKeyFrame bool, au [][]byte, err error) {
 	for {
 		var nalu []byte
 		if nalu, err = d.r.Read(); err != nil {
-			return nil, err
+			return false, nil, err
 		}
 
 		if len(nalu) == 0 {
@@ -79,14 +77,15 @@ func (d *Demuxer) readFrame() (au [][]byte, err error) {
 		}
 		au = append(au, nalu)
 
-		if ParseNALUType(nalu[0]) <= 31 {
-			return au, nil
+		naluType := ParseNALUType(nalu[0])
+		if naluType <= NALUnitRSVVCL31 {
+			return naluType.IsKeyFrame(), au, nil
 		}
 	}
 }
 
 func (d *Demuxer) ReadPacket() (stream.Packet, error) {
-	au, err := d.readFrame()
+	isKeyFrame, au, err := d.readFrame()
 	if err != nil {
 		return stream.Packet{}, err
 	}
@@ -96,15 +95,14 @@ func (d *Demuxer) ReadPacket() (stream.Packet, error) {
 		dts = d.pts
 	}
 
-	buf := bytes.NewBuffer(nil)
-	for _, nalu := range au {
-		binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-		buf.Write(nalu)
+	data, err := h26x.AVCC(au).Marshal()
+	if err != nil {
+		return stream.Packet{}, err
 	}
 
 	pkt := stream.Packet{
-		IsKeyFrame: IsKeyFrame(au),
-		Data:       buf.Bytes(),
+		IsKeyFrame: isKeyFrame,
+		Data:       data,
 		Time:       time.Duration(d.pts) * time.Second / timebase,
 	}
 	pkt.CompositionTime = pkt.Time - (time.Duration(dts) * time.Second / timebase)

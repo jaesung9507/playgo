@@ -3,6 +3,8 @@ package h265
 import (
 	"fmt"
 
+	"github.com/jaesung9507/playgo/stream/codec/h26x"
+
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 )
 
@@ -57,4 +59,28 @@ func (c *Codec) CodecString() string {
 	}
 
 	return base
+}
+
+func (c *Codec) ParseAU(au [][]byte) (bool, []byte) {
+	payload := make([][]byte, 0, len(au))
+	var isKeyFrame bool
+	for _, nalu := range au {
+		naluType := ParseNALUType(nalu[0])
+		switch naluType {
+		case NALUnitVPS:
+			c.VPS = nalu
+		case NALUnitSPS:
+			c.SPS = nalu
+		case NALUnitPPS:
+			c.PPS = nalu
+		}
+
+		if naluType <= NALUnitRSVVCL31 {
+			isKeyFrame = isKeyFrame || naluType.IsKeyFrame()
+			payload = append(payload, nalu)
+		}
+	}
+
+	data, _ := h26x.AVCC(payload).Marshal()
+	return isKeyFrame, data
 }

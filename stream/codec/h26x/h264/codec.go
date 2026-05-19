@@ -3,8 +3,9 @@ package h264
 import (
 	"fmt"
 
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/jaesung9507/playgo/stream/codec/h26x"
+
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 )
 
 type DTSExtractor = h264.DTSExtractor

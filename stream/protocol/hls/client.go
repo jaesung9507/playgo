@@ -1,13 +1,10 @@
 package hls
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
-	"slices"
 	"sync"
 	"time"
 
@@ -112,37 +109,16 @@ func (c *Client) dial(header map[string]string) error {
 					}
 				})
 			case *codecs.H265:
-				buf := bytes.NewBuffer(nil)
+				h265Codec := &h265.Codec{VPS: codec.VPS, SPS: codec.SPS, PPS: codec.PPS}
 				c.client.OnDataH26x(track, func(pts, dts int64, au [][]byte) {
-					buf.Reset()
-					var isKeyFrame bool
-					for _, nalu := range au {
-						naluType := h265.ParseNALUType(nalu[0])
-						switch naluType {
-						case h265.NALUnitVPS:
-							codec.VPS = nalu
-						case h265.NALUnitSPS:
-							codec.SPS = nalu
-						case h265.NALUnitPPS:
-							codec.PPS = nalu
-						case h265.NALUnitIDRWRADL, h265.NALUnitIDRNLP, h265.NALUnitCRANUT:
-							isKeyFrame = true
-							fallthrough
-						default:
-							if naluType <= h265.NALUnitRSVVCL31 {
-								binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-								buf.Write(nalu)
-							}
-						}
-					}
-
+					isKeyFrame, data := h265Codec.ParseAU(au)
 					if trackCodecs[i] == nil && codec.VPS != nil && codec.SPS != nil && codec.PPS != nil {
-						trackCodecs[i] = &h265.Codec{VPS: codec.VPS, SPS: codec.SPS, PPS: codec.PPS}
+						trackCodecs[i] = h265Codec
 						log.Printf("[HLS] track %d: H265 codec ready", i)
 						c.readyCodec(trackCodecs)
 					}
 
-					if c.ready && buf.Len() > 0 {
+					if c.ready && len(data) > 0 {
 						pts := time.Duration(pts) * time.Second / time.Duration(track.ClockRate)
 						dts := time.Duration(dts) * time.Second / time.Duration(track.ClockRate)
 						c.packetQueue <- &stream.Packet{
@@ -150,7 +126,7 @@ func (c *Client) dial(header map[string]string) error {
 							IsKeyFrame:      isKeyFrame,
 							CompositionTime: pts - dts,
 							Time:            dts,
-							Data:            slices.Clone(buf.Bytes()),
+							Data:            data,
 						}
 					}
 				})

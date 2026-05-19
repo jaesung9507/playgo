@@ -1,9 +1,7 @@
 package rtmp
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -72,34 +70,6 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) onDataH26x(index int8, pts, dts time.Duration, au [][]byte) {
-	var isKeyFrame bool
-	buf := bytes.NewBuffer(nil)
-	for _, nalu := range au {
-		switch h264.ParseNALUType(nalu[0]) {
-		case h264.NALUnitSPS, h264.NALUnitPPS:
-		case h264.NALUnitIDRSlice:
-			isKeyFrame = true
-			fallthrough
-		default:
-			b := make([]byte, 4+len(nalu))
-			binary.BigEndian.PutUint32(b, uint32(len(nalu)))
-			copy(b[4:], nalu)
-			buf.Write(b)
-		}
-	}
-
-	if buf := buf.Bytes(); len(buf) > 0 {
-		c.packetQueue <- &stream.Packet{
-			Idx:             index,
-			IsKeyFrame:      isKeyFrame,
-			CompositionTime: pts - dts,
-			Time:            dts,
-			Data:            buf,
-		}
-	}
-}
-
 func (c *Client) CodecData() ([]stream.Codec, error) {
 	reader := &gortmplib.Reader{Conn: c.client}
 	if err := reader.Initialize(); err != nil {
@@ -127,9 +97,21 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 				}
 			})
 		case *codecs.H265:
-			result = append(result, &h265.Codec{SPS: codec.SPS, PPS: codec.PPS})
+			h265Codec := &h265.Codec{VPS: codec.VPS, SPS: codec.SPS, PPS: codec.PPS}
+			result = append(result, h265Codec)
 			log.Printf("[RTMP] track %d: H265 codec ready", index)
-			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) { c.onDataH26x(int8(index), pts, dts, au) })
+			reader.OnDataH265(track, func(pts, dts time.Duration, au [][]byte) {
+				isKeyFrame, data := h265Codec.ParseAU(au)
+				if len(data) > 0 {
+					c.packetQueue <- &stream.Packet{
+						Idx:             int8(index),
+						IsKeyFrame:      isKeyFrame,
+						CompositionTime: pts - dts,
+						Time:            dts,
+						Data:            data,
+					}
+				}
+			})
 		case *codecs.MPEG4Audio:
 			asc, err := codec.Config.Marshal()
 			if err != nil {

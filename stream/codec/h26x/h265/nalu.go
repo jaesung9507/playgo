@@ -40,19 +40,15 @@ const (
 	NALUnitPPS
 )
 
-func ParseNALUType(b byte) NALUType {
-	return NALUType((b >> 1) & 0x3F)
-}
-
-func IsKeyFrame(au [][]byte) bool {
-	for _, nalu := range au {
-		if len(nalu) > 0 {
-			switch ParseNALUType(nalu[0]) {
-			case NALUnitIDRWRADL, NALUnitIDRNLP, NALUnitCRANUT:
-				return true
-			}
-		}
+func (t NALUType) IsKeyFrame() bool {
+	switch t {
+	case NALUnitIDRWRADL, NALUnitIDRNLP, NALUnitCRANUT:
+		return true
 	}
 
 	return false
+}
+
+func ParseNALUType(b byte) NALUType {
+	return NALUType((b >> 1) & 0x3F)
 }

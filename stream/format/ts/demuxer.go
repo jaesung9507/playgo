@@ -1,12 +1,9 @@
 package ts
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
-	"slices"
 	"time"
 
 	"github.com/jaesung9507/playgo/stream"
@@ -64,36 +61,14 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 			})
 		case *codecs.H265:
 			h265Codec := &h265.Codec{}
-			buf := bytes.NewBuffer(nil)
 			d.r.OnDataH265(track, func(pts, dts int64, au [][]byte) error {
-				buf.Reset()
-				var isKeyFrame bool
-				for _, nalu := range au {
-					naluType := h265.ParseNALUType(nalu[0])
-					switch naluType {
-					case h265.NALUnitVPS:
-						h265Codec.VPS = nalu
-					case h265.NALUnitSPS:
-						h265Codec.SPS = nalu
-					case h265.NALUnitPPS:
-						h265Codec.PPS = nalu
-					case h265.NALUnitIDRWRADL, h265.NALUnitIDRNLP, h265.NALUnitCRANUT:
-						isKeyFrame = true
-						fallthrough
-					default:
-						if naluType <= h265.NALUnitRSVVCL31 {
-							binary.Write(buf, binary.BigEndian, uint32(len(nalu)))
-							buf.Write(nalu)
-						}
-					}
-				}
-
+				isKeyFrame, data := h265Codec.ParseAU(au)
 				if result[i] == nil && h265Codec.VPS != nil && h265Codec.SPS != nil && h265Codec.PPS != nil {
 					result[i] = h265Codec
 					log.Printf("[MPEG-TS] track %d: H265 codec ready", i)
 				}
 
-				if buf.Len() > 0 {
+				if len(data) > 0 {
 					pts := time.Duration(pts) * time.Second / time.Duration(90000)
 					dts := time.Duration(dts) * time.Second / time.Duration(90000)
 					d.q = append(d.q, stream.Packet{
@@ -101,7 +76,7 @@ func (d *Demuxer) CodecData() ([]stream.Codec, error) {
 						IsKeyFrame:      isKeyFrame,
 						CompositionTime: pts - dts,
 						Time:            dts,
-						Data:            slices.Clone(buf.Bytes()),
+						Data:            data,
 					})
 				}
 
