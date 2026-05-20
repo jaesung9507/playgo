@@ -2,21 +2,12 @@ package format
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 
 	"github.com/jaesung9507/playgo/stream"
-	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
-	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
-	"github.com/jaesung9507/playgo/stream/format/ts"
-	"github.com/jaesung9507/playgo/stream/vdk"
-
-	"github.com/deepch/vdk/format/flv"
-	"github.com/deepch/vdk/format/mp4"
 )
 
 type LocalFile struct {
@@ -25,9 +16,10 @@ type LocalFile struct {
 	demuxer     stream.Demuxer
 	signal      chan any
 	packetQueue chan *stream.Packet
+	getDemuxer  stream.GetFileDemuxerFunc
 }
 
-func NewLocalFile(filePath string) *LocalFile {
+func NewLocalFile(filePath string, getDemuxer stream.GetFileDemuxerFunc) *LocalFile {
 	switch runtime.GOOS {
 	case "windows":
 		if len(filePath) > 0 && filePath[0] == '/' {
@@ -39,51 +31,16 @@ func NewLocalFile(filePath string) *LocalFile {
 		path:        filePath,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *stream.Packet),
+		getDemuxer:  getDemuxer,
 	}
-}
-
-func (f *LocalFile) getDemuxerFunc() (func(r io.ReadSeeker) (stream.Demuxer, error), error) {
-	ext := filepath.Ext(path.Base(f.path))
-	switch ext {
-	case ".flv":
-		return func(r io.ReadSeeker) (stream.Demuxer, error) {
-			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
-		}, nil
-	case ".ts":
-		return func(r io.ReadSeeker) (stream.Demuxer, error) {
-			return ts.NewDemuxer(r), nil
-		}, nil
-	case ".mp4":
-		return func(r io.ReadSeeker) (stream.Demuxer, error) {
-			return vdk.ToDemuxer(mp4.NewDemuxer(r)), nil
-		}, nil
-	case ".h264", ".264":
-		return func(r io.ReadSeeker) (stream.Demuxer, error) {
-			return h264.NewDemuxer(r), nil
-		}, nil
-	case ".h265", ".265", ".hevc":
-		return func(r io.ReadSeeker) (stream.Demuxer, error) {
-			return h265.NewDemuxer(r), nil
-		}, nil
-	}
-	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
 
 func (f *LocalFile) Dial() error {
-	newDemuxer, err := f.getDemuxerFunc()
-	if err != nil {
-		return err
-	}
-
 	file, err := os.Open(f.path)
 	if err != nil {
 		return err
 	}
-
-	if f.demuxer, err = newDemuxer(file); err != nil {
-		f.Close()
-		return err
-	}
+	f.demuxer = f.getDemuxer(file)
 	f.closer = file
 
 	return nil

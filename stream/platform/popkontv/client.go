@@ -1,7 +1,9 @@
 package popkontv
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -11,6 +13,9 @@ import (
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/vdk"
+
+	"github.com/deepch/vdk/format/mp4"
 )
 
 type Client struct {
@@ -68,7 +73,13 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.mp4Client = httpStream.New(mp4URL)
+		c.mp4Client = httpStream.New(mp4URL, func(r io.Reader) (stream.Demuxer, error) {
+			data, err := io.ReadAll(r)
+			if err != nil {
+				return nil, err
+			}
+			return vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data))), nil
+		})
 		return c.mp4Client.Dial()
 	}
 

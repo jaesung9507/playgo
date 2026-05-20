@@ -1,8 +1,12 @@
 package stream
 
 import (
+	"io"
 	"time"
 )
+
+type GetFileDemuxerFunc func(r io.ReadSeeker) Demuxer
+type GetNetworkDemuxerFunc func(r io.Reader) (Demuxer, error)
 
 type Codec interface {
 	CodecString() string
@@ -19,15 +23,6 @@ type Packet struct {
 type Demuxer interface {
 	CodecData() ([]Codec, error)
 	ReadPacket() (Packet, error)
-}
-
-type Client interface {
-	Dial() error
-	Close()
-	CodecData() ([]Codec, error)
-	PacketQueue() <-chan *Packet
-	CloseCh() <-chan any
-	Secure() (bool, bool, map[string]string)
 }
 
 func IsCodecReady(codecs []Codec) bool {

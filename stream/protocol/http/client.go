@@ -1,26 +1,16 @@
 package http
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"path"
-	"path/filepath"
 	"strconv"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
-	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
-	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
-	"github.com/jaesung9507/playgo/stream/format/ts"
-	"github.com/jaesung9507/playgo/stream/vdk"
-
-	"github.com/deepch/vdk/format/flv"
-	"github.com/deepch/vdk/format/mp4"
 )
 
 type Client struct {
@@ -31,57 +21,20 @@ type Client struct {
 	packetQueue chan *stream.Packet
 	isLive      bool
 	tls         secure.TLS
+	getDemuxer  stream.GetNetworkDemuxerFunc
 }
 
-func New(parsedUrl *url.URL) *Client {
+func New(parsedUrl *url.URL, getDemuxer stream.GetNetworkDemuxerFunc) *Client {
 	return &Client{
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *stream.Packet),
+		getDemuxer:  getDemuxer,
 	}
-}
-
-func (c *Client) getDemuxerFunc() (func(r io.Reader) (stream.Demuxer, error), error) {
-	ext := filepath.Ext(path.Base(c.url.Path))
-	switch ext {
-	case ".flv":
-		return func(r io.Reader) (stream.Demuxer, error) {
-			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
-		}, nil
-	case ".ts":
-		return func(r io.Reader) (stream.Demuxer, error) {
-			return ts.NewDemuxer(r), nil
-		}, nil
-	case ".h264", ".264":
-		return func(r io.Reader) (stream.Demuxer, error) {
-			return h264.NewDemuxer(r), nil
-		}, nil
-	case ".h265", ".265", ".hevc":
-		return func(r io.Reader) (stream.Demuxer, error) {
-			return h265.NewDemuxer(r), nil
-		}, nil
-	case ".mp4":
-		return func(r io.Reader) (stream.Demuxer, error) {
-			if c.isLive {
-				return nil, fmt.Errorf("not supported for live streams: %s", ext)
-			}
-			data, err := io.ReadAll(r)
-			if err != nil {
-				return nil, err
-			}
-			return vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data))), nil
-		}, nil
-	}
-	return nil, fmt.Errorf("unsupported extension: %s", ext)
 }
 
 func (c *Client) Dial() error {
 	log.Printf("[HTTP] dial: %s", c.url.String())
-	newDemuxer, err := c.getDemuxerFunc()
-	if err != nil {
-		return err
-	}
-
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: c.tls.Config(),
@@ -103,7 +56,7 @@ func (c *Client) Dial() error {
 		return fmt.Errorf("status code: %s", resp.Status)
 	}
 
-	if c.demuxer, err = newDemuxer(resp.Body); err != nil {
+	if c.demuxer, err = c.getDemuxer(resp.Body); err != nil {
 		c.Close()
 		return err
 	}

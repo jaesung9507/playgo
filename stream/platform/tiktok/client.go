@@ -2,6 +2,7 @@ package tiktok
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -11,6 +12,9 @@ import (
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/vdk"
+
+	"github.com/deepch/vdk/format/flv"
 )
 
 type Client struct {
@@ -74,7 +78,9 @@ func (c *Client) Dial() error {
 		c.tls = &tls
 		return c.mp4Client.DialWithHTTPClient(client)
 	} else if flvURL != nil {
-		c.flvClient = httpStream.New(flvURL)
+		c.flvClient = httpStream.New(flvURL, func(r io.Reader) (stream.Demuxer, error) {
+			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
+		})
 		return c.flvClient.Dial()
 	}
 

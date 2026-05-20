@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	rt "runtime"
 	"sync"
 
 	"github.com/jaesung9507/playgo/stream"
-	"github.com/jaesung9507/playgo/stream/client"
 	"github.com/jaesung9507/playgo/stream/format/fmp4"
+	"github.com/jaesung9507/playgo/stream/route"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -34,12 +35,13 @@ func (a *App) SetAlwaysOnTop(b bool) {
 }
 
 func (a *App) OpenFile() string {
+	pattern := route.SupportedFilePatterns()
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Open File",
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "Videos (*.flv;*.mp4;*.ts;*.h264;*.264;*.h265;*.265;*.hevc)",
-				Pattern:     "*.flv;*.mp4;*.ts;*.h264;*.264;*.h265;*.265;*.hevc",
+				DisplayName: fmt.Sprintf("Videos (%s)", pattern),
+				Pattern:     pattern,
 			},
 		},
 	})
@@ -146,21 +148,26 @@ func (a *App) streamLoop() {
 
 func (a *App) PlayStream(url string) (result bool) {
 	a.streamCtx, a.cancel = context.WithCancel(a.ctx)
-
-	c, err := client.Dial(a.streamCtx, url)
+	c, err := route.NewClient(url)
 	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			a.MsgBox(err.Error())
-		}
+		a.MsgBox(err.Error())
 		return false
 	}
+
 	defer func() {
 		if !result {
 			c.Close()
 		}
 	}()
 
-	codecData, err := client.CodecData(a.streamCtx, c)
+	if err = stream.Dial(a.streamCtx, c); err != nil {
+		if !errors.Is(err, context.Canceled) {
+			a.MsgBox(err.Error())
+		}
+		return false
+	}
+
+	codecData, err := stream.CodecData(a.streamCtx, c)
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			a.MsgBox(err.Error())
