@@ -9,10 +9,10 @@ PlayGo supports a wide range of streaming protocols, local file formats, and onl
 ### Supported Protocols
 | Protocol | Video Codec | Audio Codec | Container |
 |--|--|--|--|
-| RTSP / RTSPS | H264 | AAC | - |
+| RTSP / RTSPS | H264, H265 | AAC | - |
 | RTMP / RTMPS | H264, H265 | AAC | FLV |
 | HTTP-FLV / HTTPS-FLV | H264 | AAC | FLV |
-| HTTP-TS / HTTPS-TS | H264 | AAC | TS |
+| HTTP-TS / HTTPS-TS | H264, H265 | AAC | TS |
 | HTTP-MP4 / HTTPS-MP4 | H264 | AAC | MP4 |
 | HLS / LL-HLS | H264, H265 | AAC | TS, fMP4 |
 | SRT | H264, H265 | AAC | TS |

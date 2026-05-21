@@ -10,7 +10,9 @@ import (
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/codec/aac"
+	"github.com/jaesung9507/playgo/stream/codec/h26x"
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h264"
+	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 
 	"github.com/bluenviron/gortsplib/v5"
 	"github.com/bluenviron/gortsplib/v5/pkg/base"
@@ -72,6 +74,27 @@ func (c *Client) Close() {
 	}
 }
 
+func (c *Client) onPacketH26X(idx int8, h26xCodec h26x.Codec, dtsExtractor h26x.DTSExtractor, au [][]byte, pts int64, clockRate int) {
+	dts, err := dtsExtractor.Extract(au, pts)
+	if err != nil {
+		dts = pts
+	}
+
+	isKeyFrame, data := h26xCodec.ParseAU(au)
+	if len(data) > 0 {
+		pts := time.Duration(pts) * time.Second / time.Duration(clockRate)
+		dts := time.Duration(dts) * time.Second / time.Duration(clockRate)
+
+		c.packetQueue <- &stream.Packet{
+			Idx:             idx,
+			IsKeyFrame:      isKeyFrame,
+			CompositionTime: pts - dts,
+			Time:            pts,
+			Data:            data,
+		}
+	}
+}
+
 func (c *Client) CodecData() ([]stream.Codec, error) {
 	desc, _, err := c.client.Describe((*base.URL)(c.url))
 	if err != nil {
@@ -111,25 +134,34 @@ func (c *Client) CodecData() ([]stream.Codec, error) {
 						return
 					}
 
-					dts, err := dtsExtractor.Extract(au, pts)
+					c.onPacketH26X(int8(i), h264Codec, dtsExtractor, au, pts, f.ClockRate())
+				})
+			case *format.H265:
+				h265Codec := &h265.Codec{VPS: f.VPS, SPS: f.SPS, PPS: f.PPS}
+				trackCodecs[i] = h265Codec
+				log.Printf("[RTSP] track %d: H265 codec ready", i)
+
+				dec, err := f.CreateDecoder()
+				if err != nil {
+					return nil, err
+				}
+
+				dtsExtractor := &h265.DTSExtractor{}
+				dtsExtractor.Initialize()
+				dtsExtractor.Extract([][]byte{f.VPS, f.SPS, f.PPS}, 0)
+
+				c.client.OnPacketRTP(media, f, func(pkt *rtp.Packet) {
+					pts, ok := c.client.PacketPTS(media, pkt)
+					if !ok {
+						return
+					}
+
+					au, err := dec.Decode(pkt)
 					if err != nil {
-						dts = pts
+						return
 					}
 
-					isKeyFrame, data := h264Codec.ParseAU(au)
-					if len(data) > 0 {
-						clockRate := time.Duration(f.ClockRate())
-						pts := time.Duration(pts) * time.Second / time.Duration(clockRate)
-						dts := time.Duration(dts) * time.Second / time.Duration(clockRate)
-
-						c.packetQueue <- &stream.Packet{
-							Idx:             int8(i),
-							IsKeyFrame:      isKeyFrame,
-							CompositionTime: pts - dts,
-							Time:            pts,
-							Data:            data,
-						}
-					}
+					c.onPacketH26X(int8(i), h265Codec, dtsExtractor, au, pts, f.ClockRate())
 				})
 			case *format.MPEG4Audio:
 				asc, err := f.Config.Marshal()
