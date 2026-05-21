@@ -3,20 +3,19 @@ package cime
 import (
 	"errors"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
-	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 )
 
 type Client struct {
 	url        *url.URL
 	hlsClient  *hls.Client
-	httpClient *httpStream.MP4Client
+	httpClient *http.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -27,12 +26,7 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: (&secure.TLS{}).Config(),
-		},
-	}
-
+	httpClient := (&secure.TLS{}).HTTPClient()
 	log.Printf("[CEMI] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	if channelPath, ok := strings.CutPrefix(c.url.Path, "/@"); ok {
@@ -75,7 +69,7 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.httpClient = httpStream.NewMP4Client(mp4URL)
+		c.httpClient = http.NewMP4Client(mp4URL)
 		return c.httpClient.Dial()
 	}
 

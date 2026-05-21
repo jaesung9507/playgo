@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"path"
@@ -15,7 +14,7 @@ import (
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
-	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/jaesung9507/nvver/chzzk"
 	"github.com/jaesung9507/nvver/shoppinglive"
@@ -26,7 +25,7 @@ import (
 type Client struct {
 	url        *url.URL
 	hlsClient  *hls.Client
-	httpClient *httpStream.MP4Client
+	httpClient *http.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -36,12 +35,7 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: (&secure.TLS{}).Config(),
-		},
-	}
-
+	httpClient := (&secure.TLS{}).HTTPClient()
 	log.Printf("[NAVER] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	switch c.url.Host {
@@ -303,7 +297,7 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.httpClient = httpStream.NewMP4Client(mp4URL)
+		c.httpClient = http.NewMP4Client(mp4URL)
 		return c.httpClient.Dial()
 	}
 

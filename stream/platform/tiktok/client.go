@@ -4,14 +4,13 @@ import (
 	"errors"
 	"io"
 	"log"
-	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
-	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 	"github.com/jaesung9507/playgo/stream/vdk"
 
 	"github.com/deepch/vdk/format/flv"
@@ -19,8 +18,8 @@ import (
 
 type Client struct {
 	url       *url.URL
-	mp4Client *httpStream.MP4Client
-	flvClient *httpStream.Client
+	mp4Client *http.MP4Client
+	flvClient *http.Client
 	tls       *secure.TLS
 }
 
@@ -30,22 +29,9 @@ func New(parsedURL *url.URL) *Client {
 	}
 }
 
-type transport struct {
-	Transport http.RoundTripper
-}
-
-func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("Referer", "https://www.tiktok.com/")
-	return t.Transport.RoundTrip(req)
-}
-
 func (c *Client) Dial() error {
 	var tls secure.TLS
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tls.Config(),
-		},
-	}
+	client := tls.HTTPClient()
 	client.Jar, _ = cookiejar.New(nil)
 
 	log.Printf("[TikTok] dial: %s", c.url.String())
@@ -73,12 +59,12 @@ func (c *Client) Dial() error {
 	}
 
 	if mp4URL != nil {
-		c.mp4Client = httpStream.NewMP4Client(mp4URL)
+		c.mp4Client = http.NewMP4Client(mp4URL)
 		client.Transport = &transport{Transport: client.Transport}
 		c.tls = &tls
 		return c.mp4Client.DialWithHTTPClient(client)
 	} else if flvURL != nil {
-		c.flvClient = httpStream.New(flvURL, func(r io.Reader) (stream.Demuxer, error) {
+		c.flvClient = http.New(flvURL, func(r io.Reader) (stream.Demuxer, error) {
 			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
 		})
 		return c.flvClient.Dial()

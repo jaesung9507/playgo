@@ -40,11 +40,7 @@ func (c *MP4Client) DialWithHTTPClient(client *http.Client) error {
 }
 
 func (c *MP4Client) Dial() error {
-	return c.dial(&http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: c.tls.Config(),
-		},
-	})
+	return c.dial(c.tls.HTTPClient())
 }
 
 func (c *MP4Client) dial(client *http.Client) error {

@@ -5,14 +5,13 @@ import (
 	"errors"
 	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
-	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 	"github.com/jaesung9507/playgo/stream/vdk"
 
 	"github.com/deepch/vdk/format/mp4"
@@ -21,7 +20,7 @@ import (
 type Client struct {
 	url       *url.URL
 	hlsClient *hls.Client
-	mp4Client *httpStream.Client
+	mp4Client *http.Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -32,12 +31,7 @@ func New(parsedURL *url.URL) *Client {
 
 func (c *Client) Dial() error {
 	var tls secure.TLS
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tls.Config(),
-		},
-	}
-
+	client := tls.HTTPClient()
 	log.Printf("[PopkonTV] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	if strings.HasPrefix(c.url.Path, "/live/view") {
@@ -73,7 +67,7 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.mp4Client = httpStream.New(mp4URL, func(r io.Reader) (stream.Demuxer, error) {
+		c.mp4Client = http.New(mp4URL, func(r io.Reader) (stream.Demuxer, error) {
 			data, err := io.ReadAll(r)
 			if err != nil {
 				return nil, err

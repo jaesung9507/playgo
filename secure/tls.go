@@ -3,10 +3,19 @@ package secure
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"net/http"
 )
 
 type TLS struct {
 	cs *tls.ConnectionState
+}
+
+func (t *TLS) HTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: t.Config(),
+		},
+	}
 }
 
 func (t *TLS) Config() *tls.Config {

@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
-	httpStream "github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 
 	"github.com/kkdai/youtube/v2"
 )
@@ -19,7 +18,7 @@ import (
 type Client struct {
 	url       *url.URL
 	hlsClient *hls.Client
-	mp4Client *httpStream.MP4Client
+	mp4Client *http.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -28,11 +27,7 @@ func New(parsedURL *url.URL) *Client {
 
 func (c *Client) Dial() error {
 	client := youtube.Client{
-		HTTPClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: (&secure.TLS{}).Config(),
-			},
-		},
+		HTTPClient: (&secure.TLS{}).HTTPClient(),
 	}
 
 	log.Printf("[YouTube] dial: %s", c.url.String())
@@ -72,7 +67,7 @@ func (c *Client) Dial() error {
 	if err != nil {
 		return err
 	}
-	c.mp4Client = httpStream.NewMP4Client(mp4URL)
+	c.mp4Client = http.NewMP4Client(mp4URL)
 
 	return c.mp4Client.Dial()
 }

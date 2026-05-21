@@ -3,7 +3,6 @@ package pandatv
 import (
 	"errors"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -25,12 +24,7 @@ func New(parsedURL *url.URL) *Client {
 
 func (c *Client) Dial() error {
 	var tls secure.TLS
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tls.Config(),
-		},
-	}
-
+	client := tls.HTTPClient()
 	log.Printf("[PandaTV] dial: %s", c.url.String())
 	var hlsURL *url.URL
 	if userID, ok := strings.CutPrefix(c.url.Path, "/play/"); ok {

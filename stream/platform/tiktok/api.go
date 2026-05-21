@@ -14,6 +14,15 @@ const (
 	StatusOffline = 4
 )
 
+type transport struct {
+	Transport http.RoundTripper
+}
+
+func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Referer", "https://www.tiktok.com/")
+	return t.Transport.RoundTrip(req)
+}
+
 func GetLiveFLVURL(client *http.Client, uniqueID string) (string, error) {
 	req, err := http.NewRequest("GET", "https://www.tiktok.com/api-live/user/room", nil)
 	if err != nil {

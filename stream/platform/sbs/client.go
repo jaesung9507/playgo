@@ -3,7 +3,6 @@ package sbs
 import (
 	"errors"
 	"log"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -26,14 +25,8 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: (&secure.TLS{}).Config(),
-		},
-	}
-
+	client := (&secure.TLS{}).HTTPClient()
 	log.Printf("[SBS] dial: %s", c.url.String())
-
 	var hlsURL *url.URL
 	switch c.url.Host {
 	case "sbs.co.kr", "www.sbs.co.kr":

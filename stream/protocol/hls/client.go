@@ -63,12 +63,8 @@ func (c *Client) Dial() error {
 
 func (c *Client) dial(header map[string]string) error {
 	c.client = &gohlslib.Client{
-		URI: c.url.String(),
-		HTTPClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: c.tls.Config(),
-			},
-		},
+		URI:        c.url.String(),
+		HTTPClient: c.tls.HTTPClient(),
 		OnRequest: func(r *http.Request) {
 			if r.URL.RawQuery == "" && c.url.RawQuery != "" {
 				r.URL.RawQuery = c.url.RawQuery

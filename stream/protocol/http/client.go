@@ -35,11 +35,7 @@ func New(parsedUrl *url.URL, getDemuxer stream.GetNetworkDemuxerFunc) *Client {
 
 func (c *Client) Dial() error {
 	log.Printf("[HTTP] dial: %s", c.url.String())
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: c.tls.Config(),
-		},
-	}
+	client := c.tls.HTTPClient()
 	resp, err := client.Get(c.url.String())
 	if err != nil {
 		return err
