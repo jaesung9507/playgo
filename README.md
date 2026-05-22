@@ -16,6 +16,7 @@ PlayGo supports a wide range of streaming protocols, local file formats, and onl
 | HTTP-MP4 / HTTPS-MP4 | H264 | AAC | MP4 |
 | HLS / LL-HLS | H264, H265 | AAC | TS, fMP4 |
 | SRT | H264, H265 | AAC | TS |
+| WebRTC (WHEP) | H264, H265 | - | - |
 
 ### Local File Playback
 | Extension | Video Codec | Audio Codec |

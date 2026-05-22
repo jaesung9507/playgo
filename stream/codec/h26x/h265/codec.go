@@ -32,6 +32,10 @@ func (c *Codec) decodeSPS() error {
 	return nil
 }
 
+func (c *Codec) Ready() bool {
+	return c.VPS != nil && c.SPS != nil && c.PPS != nil
+}
+
 func (c *Codec) FPS() float64 {
 	if err := c.decodeSPS(); err == nil {
 		return c.sps.FPS()

@@ -21,6 +21,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/platform/youtube"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
+	"github.com/jaesung9507/playgo/stream/protocol/whep"
 	"github.com/jaesung9507/playgo/stream/vdk"
 )
 
@@ -65,7 +66,10 @@ func NewHTTPClient(parsedURL *url.URL) (stream.Client, error) {
 		default:
 			if fn := getHTTPDemuxer(ext); fn != nil {
 				return http.New(parsedURL, fn), nil
+			} else if CheckWHEP(parsedURL.String()) {
+				return whep.New(parsedURL), nil
 			}
+
 			return nil, fmt.Errorf("unsupported http extension: %s", ext)
 		}
 	}

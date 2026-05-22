@@ -6,6 +6,7 @@ type AVCC = h264.AVCC
 
 type Codec interface {
 	CodecString() string
+	Ready() bool
 	FPS() float64
 	ParseAU(au [][]byte) (bool, []byte)
 }
