@@ -13,6 +13,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 	"github.com/jaesung9507/playgo/stream/format/ts"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
+	"github.com/jaesung9507/playgo/stream/platform/kick"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
 	"github.com/jaesung9507/playgo/stream/platform/pandatv"
 	"github.com/jaesung9507/playgo/stream/platform/popkontv"
@@ -44,6 +45,8 @@ func NewHTTPClient(parsedURL *url.URL) (stream.Client, error) {
 	switch parsedURL.Host {
 	case "ci.me":
 		return cime.New(parsedURL), nil
+	case "kick.com", "www.kick.com":
+		return kick.New(parsedURL), nil
 	case "pandalive.co.kr", "www.pandalive.co.kr":
 		return pandatv.New(parsedURL), nil
 	case "popkontv.com", "www.popkontv.com":
