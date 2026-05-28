@@ -23,17 +23,39 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	var tls secure.TLS
-	client := tls.HTTPClient()
+	client := (&secure.TLS{}).HTTPClient()
 	log.Printf("[KICK] dial: %s", c.url.String())
 	var hlsURL *url.URL
-	if slug, ok := strings.CutPrefix(c.url.Path, "/"); ok {
-		rawURL, err := GetLiveHLSURL(client, slug)
+	path := strings.Split(c.url.Path, "/")
+	if len(path) > 3 && path[2] == "videos" {
+		rawURL, err := GetVideoHLSURL(client, path[3])
 		if err != nil {
 			return err
 		}
 
 		hlsURL, err = url.Parse(rawURL)
+		if err != nil {
+			return err
+		}
+	} else if len(path) > 3 && path[2] == "clips" {
+		clip, err := GetClip(client, path[3])
+		if err != nil {
+			return err
+		}
+		log.Printf("[KICK] video title: %s", clip.Title)
+
+		hlsURL, err = url.Parse(clip.ClipURL)
+		if err != nil {
+			return err
+		}
+	} else if len(path) > 1 {
+		video, err := GetLiveStream(client, path[1])
+		if err != nil {
+			return err
+		}
+		log.Printf("[KICK] video title: %s", video.Title)
+
+		hlsURL, err = url.Parse(video.PlaybackURL)
 		if err != nil {
 			return err
 		}

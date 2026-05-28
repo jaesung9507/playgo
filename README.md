@@ -39,6 +39,8 @@ The following platforms are supported via direct URL input.
 | TikTok | Video | https://www.tiktok.com/@{uniqueID}/video/{videoID} |
 | TikTok | Live | https://www.tiktok.com/@{uniqueID}/live |
 | KICK | Live | https://kick.com/{channelSlug} |
+| KICK | Video | https://kick.com/{channelSlug}/videos/{uuid} |
+| KICK | Clip | https://kick.com/{channelSlug}/clips/{clipID} |
 | CIME | Live | https://ci.me/@{channelSlug}/live |
 | CIME | VOD | https://ci.me/@{channelSlug}/vods/{vodID} |
 | CIME | Clip | https://ci.me/clips/{clipID} |
