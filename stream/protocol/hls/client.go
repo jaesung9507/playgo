@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -66,8 +68,11 @@ func (c *Client) dial(header map[string]string) error {
 		URI:        c.url.String(),
 		HTTPClient: c.tls.HTTPClient(),
 		OnRequest: func(r *http.Request) {
-			if r.URL.RawQuery == "" && c.url.RawQuery != "" {
-				r.URL.RawQuery = c.url.RawQuery
+			switch filepath.Ext(path.Base(r.URL.Path)) {
+			case ".m3u8", ".ts":
+				if r.URL.RawQuery == "" && c.url.RawQuery != "" {
+					r.URL.RawQuery = c.url.RawQuery
+				}
 			}
 
 			for k, v := range header {

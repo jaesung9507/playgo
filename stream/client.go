@@ -35,12 +35,6 @@ func Dial(ctx context.Context, c Client) error {
 }
 
 func CodecData(ctx context.Context, c Client) (codecs []Codec, err error) {
-	defer func() {
-		if err != nil {
-			c.Close()
-		}
-	}()
-
 	ch := make(chan error, 1)
 	go func() {
 		var err error
