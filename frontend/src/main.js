@@ -15,6 +15,7 @@ let isReconnecting = false;
 let isUserStopping = false;
 let autoReconnectEnabled = false;
 let autoReconnectCnt = 0;
+let autoReconnectTimeout = null;
 
 const storageKeyURL = "playgo:ui:url";
 const storageKeyAutoReconnect = "playgo:setting:autoReconnect";
@@ -60,11 +61,19 @@ function initialize() {
     setURLIcon(EarthIcon);
 }
 
+function clearAutoReconnet() {
+    if (autoReconnectTimeout !== null) {
+        clearTimeout(autoReconnectTimeout);
+        autoReconnectTimeout = null;
+    }
+}
+
 function onPlayGo() {
     if (btnPlayGo.innerText !== "PlayGo") {
         isUserStopping = true;
         CloseStream();
     } else {
+        clearAutoReconnet();
         const url = inputURL.value;
         if (!url) {
             return;
@@ -120,6 +129,10 @@ menuAutoReconnect.addEventListener("click", () => {
     autoReconnectEnabled = !menuAutoReconnect.classList.contains("checked");
     menuAutoReconnect.classList.toggle("checked", autoReconnectEnabled);
     localStorage.setItem(storageKeyAutoReconnect, autoReconnectEnabled);
+
+    if (!autoReconnectEnabled) {
+        clearAutoReconnet();
+    }
 });
 
 menuAlwaysOnTop.addEventListener("click", () => {
@@ -237,8 +250,9 @@ EventsOn("OnStreamStop", () => {
 
     if (autoReconnectEnabled) {
         if (autoReconnectCnt > 0) {
-            setTimeout(() => {
-                onPlayGo();
+            autoReconnectTimeout = setTimeout(() => {
+                if (autoReconnectEnabled) onPlayGo();
+                autoReconnectTimeout = null;
             }, 1000);
         } else {
             onPlayGo();
