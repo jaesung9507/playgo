@@ -12,8 +12,13 @@ let mediaSource, sourceBuffer;
 let frameQueue = [];
 let isAppending = false;
 let isReconnecting = false;
+let isUserStopping = false;
+let autoReconnectEnabled = false;
+let autoReconnectCnt = 0;
+let autoReconnectTimeout = null;
 
 const storageKeyURL = "playgo:ui:url";
+const storageKeyAutoReconnect = "playgo:setting:autoReconnect";
 const storageKeyAlwaysOnTop = "playgo:setting:alwaysOnTop";
 
 const btnPlayGo = document.getElementById("btnPlayGo");
@@ -25,6 +30,7 @@ const imgPoster = document.getElementById("imgPoster");
 const btnMenu = document.getElementById("btnMenu");
 const dropdownMenu = document.getElementById("dropdownMenu");
 const menuOpenFile = document.getElementById("menuOpenFile");
+const menuAutoReconnect = document.getElementById("menuAutoReconnect");
 const menuAlwaysOnTop = document.getElementById("menuAlwaysOnTop");
 const menuQuit = document.getElementById("menuQuit");
 
@@ -40,6 +46,12 @@ function initialize() {
         inputURL.value = lastURL;
     }
 
+    const isAutoReconnect = localStorage.getItem(storageKeyAutoReconnect);
+    if (isAutoReconnect === "true") {
+        autoReconnectEnabled = true;
+        menuAutoReconnect.classList.add("checked");
+    }
+
     const isAlwaysOnTop = localStorage.getItem(storageKeyAlwaysOnTop);
     if (isAlwaysOnTop === "true") {
         SetAlwaysOnTop(true);
@@ -49,10 +61,19 @@ function initialize() {
     setURLIcon(EarthIcon);
 }
 
+function clearAutoReconnet() {
+    if (autoReconnectTimeout !== null) {
+        clearTimeout(autoReconnectTimeout);
+        autoReconnectTimeout = null;
+    }
+}
+
 function onPlayGo() {
     if (btnPlayGo.innerText !== "PlayGo") {
+        isUserStopping = true;
         CloseStream();
     } else {
+        clearAutoReconnet();
         const url = inputURL.value;
         if (!url) {
             return;
@@ -104,6 +125,16 @@ menuOpenFile.addEventListener("click", () => {
     }
 });
 
+menuAutoReconnect.addEventListener("click", () => {
+    autoReconnectEnabled = !menuAutoReconnect.classList.contains("checked");
+    menuAutoReconnect.classList.toggle("checked", autoReconnectEnabled);
+    localStorage.setItem(storageKeyAutoReconnect, autoReconnectEnabled);
+
+    if (!autoReconnectEnabled) {
+        clearAutoReconnet();
+    }
+});
+
 menuAlwaysOnTop.addEventListener("click", () => {
     const isAlwaysOnTop = !menuAlwaysOnTop.classList.contains("checked");
     SetAlwaysOnTop(isAlwaysOnTop);
@@ -129,6 +160,7 @@ elVideo.addEventListener("error", (e) => {
     if (error) {
         console.error(`video error: code=${error.code}, message=${error.message}`, e);
         MsgBox(error.message);
+        isUserStopping = true;
         CloseStream();
     }
 });
@@ -196,15 +228,37 @@ EventsOn("OnInit", function (meta, init) {
         };
         sourceBuffer.addEventListener("updateend", initAppendDone);
         pushBuffer(init);
+        autoReconnectCnt = 0;
     });
 });
 
 EventsOn("OnStreamStop", () => {
     console.log("OnStreamStop");
     resetVideo();
+
+    if (isUserStopping) {
+        autoReconnectCnt = 0;
+        isUserStopping = false;
+        return;
+    }
+
     if (isReconnecting) {
         isReconnecting = false;
         onPlayGo();
+        return;
+    }
+
+    if (autoReconnectEnabled) {
+        if (autoReconnectCnt > 0) {
+            autoReconnectTimeout = setTimeout(() => {
+                if (autoReconnectEnabled) onPlayGo();
+                autoReconnectTimeout = null;
+            }, 1000);
+        } else {
+            onPlayGo();
+        }
+        autoReconnectCnt++;
+        return;
     }
 });
 
