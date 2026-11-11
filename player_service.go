@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	rt "runtime"
+	"runtime"
 	"sync"
 
 	"github.com/jaesung9507/playgo/stream"
@@ -55,7 +55,7 @@ func (s *PlayerService) OpenFile() string {
 	}
 
 	if len(filePath) > 0 {
-		switch rt.GOOS {
+		switch runtime.GOOS {
 		case "windows":
 			filePath = "file:///" + filepath.ToSlash(filePath)
 		default:
@@ -139,7 +139,7 @@ func (s *PlayerService) streamLoop() {
 			case <-s.streamClient.CloseCh():
 				return
 			case packet := <-s.streamClient.PacketQueue():
-				switch rt.GOOS {
+				switch runtime.GOOS {
 				case "linux":
 					packet.CompositionTime = 0
 				}
