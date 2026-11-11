@@ -12,11 +12,11 @@ import (
 	"github.com/jaesung9507/playgo/stream/format/fmp4"
 	"github.com/jaesung9507/playgo/stream/route"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// App struct
-type App struct {
+type PlayerService struct {
+	app          *application.App
 	ctx          context.Context
 	streamClient stream.Client
 	mp4Muxer     *fmp4.Muxer
@@ -25,28 +25,32 @@ type App struct {
 	wg           sync.WaitGroup
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewPlayerService(app *application.App) *PlayerService {
+	return &PlayerService{app: app}
 }
 
-func (a *App) SetAlwaysOnTop(b bool) {
-	runtime.WindowSetAlwaysOnTop(a.ctx, b)
+func (s *PlayerService) Window() application.Window {
+	w, _ := s.app.Window.Get("player")
+	return w
 }
 
-func (a *App) OpenFile() string {
+func (s *PlayerService) SetAlwaysOnTop(b bool) {
+	s.Window().SetAlwaysOnTop(b)
+}
+
+func (s *PlayerService) OpenFile() string {
 	pattern := route.SupportedFilePatterns()
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	filePath, err := s.app.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
 		Title: "Open File",
-		Filters: []runtime.FileFilter{
+		Filters: []application.FileFilter{
 			{
 				DisplayName: fmt.Sprintf("Videos (%s)", pattern),
 				Pattern:     pattern,
 			},
 		},
-	})
+	}).PromptForSingleSelection()
 	if err != nil {
-		a.MsgBox(err.Error())
+		s.MsgBox(err.Error())
 		return ""
 	}
 
@@ -62,17 +66,18 @@ func (a *App) OpenFile() string {
 	return filePath
 }
 
-func (a *App) Quit() {
-	runtime.Quit(a.ctx)
+func (s *PlayerService) Quit() {
+	s.app.Quit()
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
+func (s *PlayerService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	s.ctx = ctx
 
-	if screens, _ := runtime.ScreenGetAll(ctx); len(screens) > 0 {
-		primaryScreen := screens[0]
+	if screens := s.app.Screen.GetAll(); len(screens) > 0 {
+		primaryScreen := s.app.Screen.GetPrimary()
+		if primaryScreen == nil {
+			primaryScreen = screens[0]
+		}
 
 		var width, height int
 		if primaryScreen.Size.Width >= primaryScreen.Size.Height {
@@ -82,75 +87,76 @@ func (a *App) startup(ctx context.Context) {
 		}
 		height = int(float64(width) * 0.75)
 
-		runtime.WindowSetSize(ctx, width, height)
-		runtime.WindowCenter(ctx)
+		s.Window().SetSize(width, height)
+		s.Window().Center()
 	}
 
-	runtime.EventsOn(a.ctx, "OnUpdateEnd", func(optionalData ...any) {
-		a.wg.Add(1)
-		a.streamLoop()
+	s.app.Event.On("OnUpdateEnd", func(event *application.CustomEvent) {
+		s.wg.Add(1)
+		s.streamLoop()
 	})
+
+	return nil
 }
 
-func (a *App) MsgBox(msg string) {
-	_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Title:   "PlayGo",
-		Message: msg,
-		Buttons: []string{"OK"},
-	})
+func (s *PlayerService) MsgBox(msg string) {
+	s.app.Dialog.Info().
+		SetTitle("PlayGo").
+		SetMessage(msg).
+		Show()
 }
 
-func (a *App) CloseStream() {
-	if a.cancel != nil {
-		a.cancel()
-		a.cancel = nil
+func (s *PlayerService) CloseStream() {
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
 	}
-	a.wg.Wait()
+	s.wg.Wait()
 
-	if a.streamClient != nil {
-		a.streamClient.Close()
-		a.streamClient = nil
+	if s.streamClient != nil {
+		s.streamClient.Close()
+		s.streamClient = nil
 	}
 
-	if a.mp4Muxer != nil {
-		a.mp4Muxer = nil
+	if s.mp4Muxer != nil {
+		s.mp4Muxer = nil
 	}
 }
 
-func (a *App) initStream(client stream.Client, muxer *fmp4.Muxer) {
-	a.streamClient = client
-	a.mp4Muxer = muxer
+func (s *PlayerService) initStream(client stream.Client, muxer *fmp4.Muxer) {
+	s.streamClient = client
+	s.mp4Muxer = muxer
 }
 
-func (a *App) streamLoop() {
-	defer a.wg.Done()
-	if a.streamClient != nil && a.mp4Muxer != nil {
-		defer runtime.EventsEmit(a.ctx, "OnStreamStop")
+func (s *PlayerService) streamLoop() {
+	defer s.wg.Done()
+	if s.streamClient != nil && s.mp4Muxer != nil {
+		defer s.app.Event.Emit("OnStreamStop")
 		for {
 			select {
-			case <-a.streamCtx.Done():
+			case <-s.streamCtx.Done():
 				return
-			case <-a.streamClient.CloseCh():
+			case <-s.streamClient.CloseCh():
 				return
-			case packet := <-a.streamClient.PacketQueue():
+			case packet := <-s.streamClient.PacketQueue():
 				switch rt.GOOS {
 				case "linux":
 					packet.CompositionTime = 0
 				}
 
-				if buf, _ := a.mp4Muxer.WritePacket(*packet); buf != nil {
-					runtime.EventsEmit(a.ctx, "OnFrame", buf)
+				if buf, _ := s.mp4Muxer.WritePacket(*packet); buf != nil {
+					s.app.Event.Emit("OnFrame", buf)
 				}
 			}
 		}
 	}
 }
 
-func (a *App) PlayStream(url string) (result bool) {
-	a.streamCtx, a.cancel = context.WithCancel(a.ctx)
+func (s *PlayerService) PlayStream(url string) (result bool) {
+	s.streamCtx, s.cancel = context.WithCancel(s.ctx)
 	c, err := route.NewClient(url)
 	if err != nil {
-		a.MsgBox(err.Error())
+		s.MsgBox(err.Error())
 		return false
 	}
 
@@ -160,38 +166,38 @@ func (a *App) PlayStream(url string) (result bool) {
 		}
 	}()
 
-	if err = stream.Dial(a.streamCtx, c); err != nil {
+	if err = stream.Dial(s.streamCtx, c); err != nil {
 		if !errors.Is(err, context.Canceled) {
-			a.MsgBox(err.Error())
+			s.MsgBox(err.Error())
 		}
 		return false
 	}
 
-	codecData, err := stream.CodecData(a.streamCtx, c)
+	codecData, err := stream.CodecData(s.streamCtx, c)
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
-			a.MsgBox(err.Error())
+			s.MsgBox(err.Error())
 		}
 		return false
 	}
 
 	if len(codecData) <= 0 {
-		a.MsgBox("not found codec info")
+		s.MsgBox("not found codec info")
 		return false
 	}
 
 	muxer := fmp4.NewMuxer()
 	meta, init, err := muxer.WriteHeader(codecData)
 	if err != nil {
-		a.MsgBox(err.Error())
+		s.MsgBox(err.Error())
 		return false
 	}
 
 	secured, trusted, secureInfo := c.Secure()
-	runtime.EventsEmit(a.ctx, "OnSecureInfo", secured, trusted, secureInfo)
+	s.app.Event.Emit("OnSecureInfo", secured, trusted, secureInfo)
 
-	a.initStream(c, muxer)
-	runtime.EventsEmit(a.ctx, "OnInit", meta, init)
+	s.initStream(c, muxer)
+	s.app.Event.Emit("OnInit", meta, init)
 
 	return true
 }

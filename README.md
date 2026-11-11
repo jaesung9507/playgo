@@ -68,7 +68,7 @@ The following platforms are supported via direct URL input.
 ## Build
 To build the application, make sure [Wails](https://wails.io/) is installed:
 ```bash
-wails build
+wails3 build
 ```
 
 ## Running on Linux

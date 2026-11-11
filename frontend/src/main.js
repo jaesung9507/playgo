@@ -1,12 +1,9 @@
-import './style.css';
-import './app.css';
-
 import EarthIcon from '~icons/mdi/earth';
 import LockIcon from '~icons/mdi/lock';
 import LockOffIcon from '~icons/mdi/lock-off';
 
-import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, MsgBox, Quit} from '../wailsjs/go/main/App';
-import {EventsOn, EventsEmit} from '../wailsjs/runtime/runtime';
+import {PlayStream, CloseStream, OpenFile, SetAlwaysOnTop, MsgBox, Quit} from '../bindings/github.com/jaesung9507/playgo/playerservice.js';
+import {Events} from '@wailsio/runtime';
 
 let mediaSource, sourceBuffer;
 let frameQueue = [];
@@ -187,7 +184,8 @@ function resetVideo() {
     setURLIcon(EarthIcon);
 }
 
-EventsOn("OnSecureInfo", function (secured, trusted, info) {
+Events.On("OnSecureInfo", function (event) {
+    const [secured, trusted, info] = event.data;
     if (secured) {
         if (trusted) {
             setURLIcon(LockIcon, "Connection secure\n\n" +
@@ -201,7 +199,8 @@ EventsOn("OnSecureInfo", function (secured, trusted, info) {
     }
 });
 
-EventsOn("OnInit", function (meta, init) {
+Events.On("OnInit", function (event) {
+    const [meta, init] = event.data;
     btnPlayGo.innerText = "Stop";
     btnReconnect.disabled = false;
     mediaSource = new MediaSource();
@@ -223,7 +222,7 @@ EventsOn("OnInit", function (meta, init) {
 
         let initAppendDone = function() {
             sourceBuffer.removeEventListener("updateend", initAppendDone);
-            EventsEmit("OnUpdateEnd");
+            Events.Emit("OnUpdateEnd");
             elVideo.play().catch(e => console.error("failed to play video:", e));
         };
         sourceBuffer.addEventListener("updateend", initAppendDone);
@@ -232,7 +231,7 @@ EventsOn("OnInit", function (meta, init) {
     });
 });
 
-EventsOn("OnStreamStop", () => {
+Events.On("OnStreamStop", () => {
     console.log("OnStreamStop");
     resetVideo();
 
@@ -262,8 +261,8 @@ EventsOn("OnStreamStop", () => {
     }
 });
 
-EventsOn("OnFrame", function (frame) {
-    pushBuffer(frame);
+Events.On("OnFrame", function (frame) {
+    pushBuffer(frame.data);
 });
 
 function pushBuffer(encoded) {
