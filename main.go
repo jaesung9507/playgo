@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -29,6 +30,16 @@ func init() {
 	application.RegisterEvent[application.Void]("OnStreamStop")
 }
 
+// WORKAROUND: a non-nil Icon makes Wails override the macOS Dock icon with this PNG and discard Assets.car.
+func platformIcon() []byte {
+	switch runtime.GOOS {
+	case "darwin":
+		return nil
+	default:
+		return icon
+	}
+}
+
 // main function serves as the application's entry point. It initializes the application, creates a window,
 // and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
 // logs any error that might occur.
@@ -42,7 +53,7 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "PlayGo",
 		Description: "© 2023-2026 Jae-Sung",
-		Icon:        icon,
+		Icon:        platformIcon(),
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
