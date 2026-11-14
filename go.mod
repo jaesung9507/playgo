@@ -7,7 +7,7 @@ require (
 	github.com/bluenviron/gortmplib v1.0.5
 	github.com/bluenviron/gortsplib/v5 v5.5.2
 	github.com/bluenviron/mediacommon/v2 v2.9.7
-	github.com/datarhei/gosrt v0.10.0
+	github.com/datarhei/gosrt v0.13.0
 	github.com/deepch/vdk v0.0.20
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
 	github.com/jaesung9507/nvver v1.3.2
@@ -47,11 +47,11 @@ require (
 	github.com/pion/transport/v4 v4.0.1 // indirect
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/term v0.46.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 )
