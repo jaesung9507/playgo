@@ -3,10 +3,10 @@ module github.com/jaesung9507/playgo
 go 1.26.0
 
 require (
-	github.com/bluenviron/gohlslib/v2 v2.2.9
+	github.com/bluenviron/gohlslib/v2 v2.4.7
 	github.com/bluenviron/gortmplib v0.3.1
 	github.com/bluenviron/gortsplib/v5 v5.5.2
-	github.com/bluenviron/mediacommon/v2 v2.8.3
+	github.com/bluenviron/mediacommon/v2 v2.9.7
 	github.com/datarhei/gosrt v0.10.0
 	github.com/deepch/vdk v0.0.20
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17
@@ -19,9 +19,9 @@ require (
 )
 
 require (
-	github.com/abema/go-mp4 v1.5.0 // indirect
-	github.com/asticode/go-astikit v0.58.0 // indirect
-	github.com/asticode/go-astits v1.15.0 // indirect
+	github.com/abema/go-mp4 v1.7.4 // indirect
+	github.com/asticode/go-astikit v0.59.0 // indirect
+	github.com/asticode/go-astits v1.17.0 // indirect
 	github.com/benburkert/openpgp v0.0.0-20160410205803-c2471f86866c // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
@@ -49,6 +49,7 @@ require (
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
