@@ -14,8 +14,8 @@ github.com/bluenviron/gohlslib/v2 v2.4.7 h1:02I8VOzQ8F9UJaHPX3RP71Pe4BVyOo6+Anky
 github.com/bluenviron/gohlslib/v2 v2.4.7/go.mod h1:ilP+vl2wgTAVPTn3ZXEGpeAdAbZi2BZtV4PdxaP9xGs=
 github.com/bluenviron/gortmplib v1.0.5 h1:xNnOT+Tsj5JzWUzdKQCaCfY5Dg2v2Hx+jrk2/a17mts=
 github.com/bluenviron/gortmplib v1.0.5/go.mod h1:Vm157IGQwdJeHervioS0EGpN+Lv8l/CAs1ifSJHNOTU=
-github.com/bluenviron/gortsplib/v5 v5.5.2 h1:EECKxin9jhNAHbii/V+cZgdKGdQQHELEC5c+t50x/Nc=
-github.com/bluenviron/gortsplib/v5 v5.5.2/go.mod h1:y18pB9TlQwzm9WdmsbrB2SOvEbzu/sT2MI/782d9bPk=
+github.com/bluenviron/gortsplib/v5 v5.6.7 h1:0o0Ays+oereZwmeOP66t154lmrvXJsON/4iCxDnjgmw=
+github.com/bluenviron/gortsplib/v5 v5.6.7/go.mod h1:5aF0ncI3gp3OjaOfJEL4qBOFiheEgrLWp2nc13rHt2c=
 github.com/bluenviron/mediacommon/v2 v2.9.7 h1:BEexzVxSuh2X7rWKviZlYC0yneRG8w8SMxx34+7H7o4=
 github.com/bluenviron/mediacommon/v2 v2.9.7/go.mod h1:1J4QckclKIksdI9+7C+PJXVBkpO/JYWn7/h+wOYq+7E=
 github.com/coder/websocket v1.8.14 h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=
