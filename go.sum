@@ -12,8 +12,8 @@ github.com/bitly/go-simplejson v0.5.1 h1:xgwPbetQScXt1gh9BmoJ6j9JMr3TElvuIyjR8pg
 github.com/bitly/go-simplejson v0.5.1/go.mod h1:YOPVLzCfwK14b4Sff3oP1AmGhI9T9Vsg84etUnlyp+Q=
 github.com/bluenviron/gohlslib/v2 v2.4.7 h1:02I8VOzQ8F9UJaHPX3RP71Pe4BVyOo6+AnkybQ38i2o=
 github.com/bluenviron/gohlslib/v2 v2.4.7/go.mod h1:ilP+vl2wgTAVPTn3ZXEGpeAdAbZi2BZtV4PdxaP9xGs=
-github.com/bluenviron/gortmplib v0.3.1 h1:gB0+CSNu7/UnOW5ajA7gyttvzZcpfKBfKtZDvvsOHKk=
-github.com/bluenviron/gortmplib v0.3.1/go.mod h1:15031Vx53/kjKdbhmLdfggv3thOv6fyRVZafAZfZh6c=
+github.com/bluenviron/gortmplib v1.0.5 h1:xNnOT+Tsj5JzWUzdKQCaCfY5Dg2v2Hx+jrk2/a17mts=
+github.com/bluenviron/gortmplib v1.0.5/go.mod h1:Vm157IGQwdJeHervioS0EGpN+Lv8l/CAs1ifSJHNOTU=
 github.com/bluenviron/gortsplib/v5 v5.5.2 h1:EECKxin9jhNAHbii/V+cZgdKGdQQHELEC5c+t50x/Nc=
 github.com/bluenviron/gortsplib/v5 v5.5.2/go.mod h1:y18pB9TlQwzm9WdmsbrB2SOvEbzu/sT2MI/782d9bPk=
 github.com/bluenviron/mediacommon/v2 v2.9.7 h1:BEexzVxSuh2X7rWKviZlYC0yneRG8w8SMxx34+7H7o4=
