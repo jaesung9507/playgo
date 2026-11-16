@@ -1,8 +1,18 @@
+import { defineConfig } from "vite";
+import wails from "@wailsio/runtime/plugins/vite";
 import Icons from 'unplugin-icons/vite';
-export default {
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  server: {
+    host: "127.0.0.1",
+    port: Number(process.env.WAILS_VITE_PORT) || 9245,
+    strictPort: true,
+  },
   plugins: [
+    wails("./bindings"),
     Icons({
       compiler: 'raw',
     }),
   ],
-};
+});

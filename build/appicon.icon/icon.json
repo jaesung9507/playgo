@@ -1,0 +1,40 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.18431,0.22745,0.29020,1.00000",
+      "srgb:0.10588,0.14902,0.21176,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "playgo_foreground.svg",
+          "name" : "playgo_foreground",
+          "position" : {
+            "scale" : 1.0,
+            "translation-in-points" : [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

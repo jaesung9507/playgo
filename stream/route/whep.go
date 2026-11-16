@@ -8,6 +8,10 @@ import (
 )
 
 func CheckWHEP(rawURL string) bool {
+	if strings.Contains(strings.ToLower(rawURL), "/whep/") {
+		return true
+	}
+
 	req, err := http.NewRequest(http.MethodOptions, rawURL, nil)
 	if err != nil {
 		return false
