@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -55,12 +56,12 @@ func (s *PlayerService) OpenFile() string {
 	}
 
 	if len(filePath) > 0 {
+		fileURL := url.URL{Scheme: "file", Path: filepath.ToSlash(filePath)}
 		switch runtime.GOOS {
 		case "windows":
-			filePath = "file:///" + filepath.ToSlash(filePath)
-		default:
-			filePath = "file://" + filePath
+			fileURL.Path = "/" + fileURL.Path
 		}
+		filePath = fileURL.String()
 	}
 
 	return filePath
