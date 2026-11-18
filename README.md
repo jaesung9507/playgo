@@ -47,9 +47,9 @@ The following platforms are supported via direct URL input.
 | CHZZK | Live | https://chzzk.naver.com/live/{channelID} |
 | CHZZK | Video | https://chzzk.naver.com/video/{videoNo} |
 | CHZZK | Clip | https://chzzk.naver.com/clips/{clipID} |
-| NAVER TV | Live | https://tv.naver.com/l/{liveNo} |
-| NAVER TV | VOD | https://tv.naver.com/v/{vodNo} |
-| NAVER TV | Clip | https://tv.naver.com/h/{clipNo} |
+| ~~NAVER TV~~ | ~~Live~~ | ~~[https://tv.naver.com/l/{liveNo}](https://tv.naver.com/l/{liveNo})~~ (Discontinued) |
+| ~~NAVER TV~~ | ~~VOD~~ | ~~[https://tv.naver.com/v/{vodNo}](https://tv.naver.com/v/{vodNo})~~ (Discontinued) |
+| ~~NAVER TV~~ | ~~Clip~~ | ~~[https://tv.naver.com/h/{clipNo}](https://tv.naver.com/h/{clipNo})~~ (Discontinued) |
 | Shopping Live | Live | https://view.shoppinglive.naver.com/lives/{broadcastID} |
 | Shopping Live | Short Clip | https://view.shoppinglive.naver.com/shortclips/{shortClipID} |
 | WEBTOON | Cuts | https://comic.naver.com/cuts/v?id={cutsID} |

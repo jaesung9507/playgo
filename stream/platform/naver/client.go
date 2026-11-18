@@ -16,9 +16,9 @@ import (
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
 
+	"github.com/jaesung9507/nvver"
 	"github.com/jaesung9507/nvver/chzzk"
 	"github.com/jaesung9507/nvver/shoppinglive"
-	"github.com/jaesung9507/nvver/tv"
 	"github.com/jaesung9507/nvver/webtoon"
 )
 
@@ -122,83 +122,7 @@ func (c *Client) Dial() error {
 			}
 		}
 	case "tv.naver.com":
-		client := tv.NewClient(httpClient)
-		if liveNo, ok := strings.CutPrefix(c.url.Path, "/l/"); ok {
-			liveNo, err := strconv.ParseInt(liveNo, 10, 64)
-			if err != nil {
-				return err
-			}
-
-			playback, err := client.GetLivePlayback(liveNo)
-			if err != nil {
-				return err
-			}
-
-			rawURL := playback.HLSPath()
-			if len(rawURL) <= 0 {
-				return fmt.Errorf("not found hls path: %v", playback)
-			}
-
-			hlsURL, err = url.Parse(rawURL)
-			if err != nil {
-				return err
-			}
-		} else if vodNo, ok := strings.CutPrefix(c.url.Path, "/v/"); ok {
-			vodNo, err := strconv.ParseInt(vodNo, 10, 64)
-			if err != nil {
-				return err
-			}
-
-			vodInfo, err := client.GetVODInfo(vodNo)
-			if err != nil {
-				return err
-			}
-
-			vods, err := client.GetVODURL(vodInfo.Clip.ClipNo, vodInfo.Clip.VideoID, vodInfo.Play.InKey)
-			if err != nil {
-				return err
-			}
-
-			resolution := 0
-			for _, info := range vods {
-				currentResolution := info.Width * info.Height
-				if resolution < currentResolution {
-					parsedURL, err := url.Parse(info.URL)
-					if err != nil {
-						continue
-					}
-
-					if ext := filepath.Ext(path.Base(parsedURL.Path)); ext == ".m3u8" {
-						hlsURL = parsedURL
-						resolution = currentResolution
-					}
-				}
-			}
-		} else if clipNo, ok := strings.CutPrefix(c.url.Path, "/h/"); ok {
-			clipNo, err := strconv.ParseInt(clipNo, 10, 64)
-			if err != nil {
-				return err
-			}
-
-			videoID, err := client.GetClipVideoID(clipNo)
-			if err != nil {
-				return err
-			}
-			log.Printf("[NAVER] video id: %s", videoID)
-
-			mp4URLs, err := client.GetClipMP4URL(videoID)
-			if err != nil {
-				return err
-			}
-
-			for _, rawURL := range mp4URLs {
-				mp4URL, err = url.Parse(rawURL)
-				if err != nil {
-					return err
-				}
-				break
-			}
-		}
+		return nvver.ErrServiceDiscontinued
 	case "view.shoppinglive.naver.com":
 		client := shoppinglive.NewClient(httpClient)
 		if broadcastID, ok := strings.CutPrefix(c.url.Path, "/lives/"); ok {
