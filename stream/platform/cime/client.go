@@ -2,7 +2,9 @@ package cime
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
@@ -27,6 +29,7 @@ func New(parsedURL *url.URL) *Client {
 
 func (c *Client) Dial() error {
 	httpClient := (&secure.TLS{}).HTTPClient()
+	httpClient.Jar, _ = cookiejar.New(nil)
 	log.Printf("[CEMI] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
 	if channelPath, ok := strings.CutPrefix(c.url.Path, "/@"); ok {
@@ -63,6 +66,13 @@ func (c *Client) Dial() error {
 		if err != nil {
 			return err
 		}
+
+		if err = SignCookie(httpClient, SignCookieReq{
+			Type:   "CLIP",
+			ClipID: clipID,
+		}); err != nil {
+			return fmt.Errorf("failed to sign cookie: %w", err)
+		}
 	}
 
 	if hlsURL != nil {
@@ -70,7 +80,7 @@ func (c *Client) Dial() error {
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
 		c.httpClient = http.NewMP4Client(mp4URL)
-		return c.httpClient.Dial()
+		return c.httpClient.DialWithHTTPClient(httpClient)
 	}
 
 	return errors.New("not supported url")

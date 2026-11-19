@@ -1,6 +1,7 @@
 package cime
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,12 @@ import (
 
 	"github.com/dop251/goja"
 )
+
+type SignCookieReq struct {
+	Type    string `json:"type"`
+	ClipID  string `json:"clipId,omitempty"`
+	VideoID string `json:"videoId,omitempty"`
+}
 
 func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
 	resp, err := client.Get(fmt.Sprintf("https://ci.me/@%s/live", channelSlug))
@@ -141,4 +148,29 @@ func GetClipMP4URL(client *http.Client, clipID string) (string, error) {
 	}
 
 	return "", fmt.Errorf("not found playback url: %+v", result)
+}
+
+func SignCookie(client *http.Client, payload SignCookieReq) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal body: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "https://ci.me/api/app/streams/sign-cookie", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to new request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("status code: %s", resp.Status)
+	}
+
+	return nil
 }
