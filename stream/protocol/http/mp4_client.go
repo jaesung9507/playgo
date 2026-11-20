@@ -25,6 +25,7 @@ type MP4Client struct {
 	signal      chan any
 	packetQueue chan *stream.Packet
 	tls         secure.TLS
+	httpClient  *http.Client
 }
 
 func NewMP4Client(parsedUrl *url.URL) *MP4Client {
@@ -35,20 +36,20 @@ func NewMP4Client(parsedUrl *url.URL) *MP4Client {
 	}
 }
 
-func (c *MP4Client) DialWithHTTPClient(client *http.Client) error {
-	return c.dial(client)
+func (c *MP4Client) SetHTTPClient(client *http.Client) {
+	c.httpClient = client
 }
 
 func (c *MP4Client) Dial() error {
-	return c.dial(c.tls.HTTPClient())
-}
+	if c.httpClient == nil {
+		c.httpClient = c.tls.HTTPClient()
+	}
 
-func (c *MP4Client) dial(client *http.Client) error {
 	log.Printf("[HTTP-MP4] dial: %s", c.url.String())
-	srs, err := NewStreamingReadSeeker(c.url.String(), client)
+	srs, err := NewStreamingReadSeeker(c.url.String(), c.httpClient)
 	if err != nil {
 		log.Printf("[HTTP-MP4] failed to mp4 streaming: %v", err)
-		resp, err := client.Get(c.url.String())
+		resp, err := c.httpClient.Get(c.url.String())
 		if err != nil {
 			return err
 		}

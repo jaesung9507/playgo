@@ -43,7 +43,9 @@ func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
 		Args []struct {
 			BodyData struct {
 				Live struct {
-					PlaybackURL string `json:"playbackUrl"`
+					Playback struct {
+						URL string `json:"url"`
+					} `json:"playback"`
 				} `json:"live"`
 			} `json:"bodyData"`
 		} `json:"args"`
@@ -52,11 +54,11 @@ func GetLiveHLSURL(client *http.Client, channelSlug string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	if len(result.Args) < 1 || len(result.Args[0].BodyData.Live.PlaybackURL) <= 0 {
+	if len(result.Args) < 1 || len(result.Args[0].BodyData.Live.Playback.URL) <= 0 {
 		return "", fmt.Errorf("not found playback url: %+v", result)
 	}
 
-	return result.Args[0].BodyData.Live.PlaybackURL, nil
+	return result.Args[0].BodyData.Live.Playback.URL, nil
 }
 
 func GetVODHLSURL(client *http.Client, channelSlug, vodID string) (string, error) {
@@ -85,7 +87,9 @@ func GetVODHLSURL(client *http.Client, channelSlug, vodID string) (string, error
 		Args []struct {
 			BodyData struct {
 				VOD struct {
-					PlaybackURL string `json:"playbackUrl"`
+					Playback struct {
+						URL string `json:"url"`
+					} `json:"playback"`
 				} `json:"vod"`
 			} `json:"bodyData"`
 		} `json:"args"`
@@ -94,11 +98,11 @@ func GetVODHLSURL(client *http.Client, channelSlug, vodID string) (string, error
 		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	if len(result.Args) < 1 || len(result.Args[0].BodyData.VOD.PlaybackURL) <= 0 {
+	if len(result.Args) < 1 || len(result.Args[0].BodyData.VOD.Playback.URL) <= 0 {
 		return "", fmt.Errorf("not found playback url: %+v", result)
 	}
 
-	return result.Args[0].BodyData.VOD.PlaybackURL, nil
+	return result.Args[0].BodyData.VOD.Playback.URL, nil
 }
 
 func GetClipMP4URL(client *http.Client, clipID string) (string, error) {

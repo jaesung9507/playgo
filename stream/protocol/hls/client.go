@@ -26,6 +26,7 @@ type Client struct {
 	signal      chan any
 	packetQueue chan *stream.Packet
 	tls         secure.TLS
+	httpClient  *http.Client
 
 	ready     bool
 	readyCh   chan []stream.Codec
@@ -55,6 +56,10 @@ func (c *Client) readyCodec(codecs []stream.Codec) {
 	})
 }
 
+func (c *Client) SetHTTPClient(client *http.Client) {
+	c.httpClient = client
+}
+
 func (c *Client) DialWithHeader(header map[string]string) error {
 	return c.dial(header)
 }
@@ -64,9 +69,13 @@ func (c *Client) Dial() error {
 }
 
 func (c *Client) dial(header map[string]string) error {
+	if c.httpClient == nil {
+		c.httpClient = c.tls.HTTPClient()
+	}
+
 	c.client = &gohlslib.Client{
 		URI:        c.url.String(),
-		HTTPClient: c.tls.HTTPClient(),
+		HTTPClient: c.httpClient,
 		OnRequest: func(r *http.Request) {
 			switch filepath.Ext(path.Base(r.URL.Path)) {
 			case ".m3u8", ".ts":

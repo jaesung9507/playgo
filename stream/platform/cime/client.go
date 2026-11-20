@@ -18,6 +18,7 @@ type Client struct {
 	url        *url.URL
 	hlsClient  *hls.Client
 	httpClient *http.MP4Client
+	tls        secure.TLS
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -28,7 +29,7 @@ func New(parsedURL *url.URL) *Client {
 }
 
 func (c *Client) Dial() error {
-	httpClient := (&secure.TLS{}).HTTPClient()
+	httpClient := c.tls.HTTPClient()
 	httpClient.Jar, _ = cookiejar.New(nil)
 	log.Printf("[CEMI] dial: %s", c.url.String())
 	var hlsURL, mp4URL *url.URL
@@ -54,6 +55,13 @@ func (c *Client) Dial() error {
 				if err != nil {
 					return err
 				}
+
+				if err = SignCookie(httpClient, SignCookieReq{
+					Type:    "VIDEO",
+					VideoID: vodID,
+				}); err != nil {
+					return fmt.Errorf("failed to sign cookie: %w", err)
+				}
 			}
 		}
 	} else if clipID, ok := strings.CutPrefix(c.url.Path, "/clips/"); ok {
@@ -77,10 +85,12 @@ func (c *Client) Dial() error {
 
 	if hlsURL != nil {
 		c.hlsClient = hls.New(hlsURL)
+		c.hlsClient.SetHTTPClient(httpClient)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
 		c.httpClient = http.NewMP4Client(mp4URL)
-		return c.httpClient.DialWithHTTPClient(httpClient)
+		c.httpClient.SetHTTPClient(httpClient)
+		return c.httpClient.Dial()
 	}
 
 	return errors.New("not supported url")
@@ -134,13 +144,5 @@ func (c *Client) CloseCh() <-chan any {
 }
 
 func (c *Client) Secure() (bool, bool, map[string]string) {
-	if c.hlsClient != nil {
-		return c.hlsClient.Secure()
-	}
-
-	if c.httpClient != nil {
-		return c.httpClient.Secure()
-	}
-
-	return false, false, nil
+	return c.tls.Info()
 }

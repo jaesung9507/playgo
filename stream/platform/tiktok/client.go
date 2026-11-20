@@ -61,8 +61,9 @@ func (c *Client) Dial() error {
 	if mp4URL != nil {
 		c.mp4Client = http.NewMP4Client(mp4URL)
 		client.Transport = &transport{Transport: client.Transport}
+		c.mp4Client.SetHTTPClient(client)
 		c.tls = &tls
-		return c.mp4Client.DialWithHTTPClient(client)
+		return c.mp4Client.Dial()
 	} else if flvURL != nil {
 		c.flvClient = http.New(flvURL, func(r io.Reader) (stream.Demuxer, error) {
 			return vdk.ToDemuxer(flv.NewDemuxer(r)), nil
