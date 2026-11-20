@@ -24,17 +24,11 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func GetLiveFLVURL(client *http.Client, uniqueID string) (string, error) {
-	req, err := http.NewRequest("GET", "https://www.tiktok.com/api-live/user/room", nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://www.tiktok.com/@%s/live", uniqueID), nil)
 	if err != nil {
 		return "", err
 	}
-
-	q := req.URL.Query()
-	q.Add("aid", "1988")
-	q.Add("sourceType", "54")
-	q.Add("uniqueId", uniqueID)
-	req.URL.RawQuery = q.Encode()
-	req.Header.Set("Referer", fmt.Sprintf("https://www.tiktok.com/@%s/live", uniqueID))
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -42,28 +36,35 @@ func GetLiveFLVURL(client *http.Client, uniqueID string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read body: %w", err)
+	}
+
+	m := regexp.MustCompile(`(?s)<script [^>]*id="SIGI_STATE"[^>]*>(.*?)</script>`).FindSubmatch(data)
+	if len(m) < 2 {
+		return "", fmt.Errorf("not found data: content-length=%d", len(data))
+	}
+
 	result := &struct {
-		StatusCode int `json:"statusCode"`
-		Data       struct {
-			LiveRoom struct {
-				Status     int `json:"status"`
-				StreamData struct {
-					PullData struct {
-						StreamData string `json:"stream_data"`
-					} `json:"pull_data"`
-				} `json:"streamData"`
-			} `json:"liveRoom"`
-		} `json:"data"`
+		Data struct {
+			Info struct {
+				LiveRoom struct {
+					Status     int `json:"status"`
+					StreamData struct {
+						PullData struct {
+							StreamData string `json:"stream_data"`
+						} `json:"pull_data"`
+					} `json:"streamData"`
+				} `json:"liveRoom"`
+			} `json:"liveRoomUserInfo"`
+		} `json:"LiveRoom"`
 	}{}
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
-		return "", fmt.Errorf("failed to decode json: %w", err)
+	if err = json.Unmarshal(m[1], result); err != nil {
+		return "", fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	if result.StatusCode != StatusOK {
-		return "", fmt.Errorf("api status code: %d", result.StatusCode)
-	}
-
-	if result.Data.LiveRoom.Status == StatusOffline {
+	if result.Data.Info.LiveRoom.Status == StatusOffline {
 		return "", errors.New("channel is offline")
 	}
 
@@ -74,7 +75,7 @@ func GetLiveFLVURL(client *http.Client, uniqueID string) (string, error) {
 			} `json:"main"`
 		} `json:"data"`
 	}{}
-	if err := json.Unmarshal([]byte(result.Data.LiveRoom.StreamData.PullData.StreamData), streamData); err != nil {
+	if err = json.Unmarshal([]byte(result.Data.Info.LiveRoom.StreamData.PullData.StreamData), streamData); err != nil {
 		return "", err
 	}
 
@@ -82,7 +83,11 @@ func GetLiveFLVURL(client *http.Client, uniqueID string) (string, error) {
 		return stream.Main.FLV, nil
 	}
 
-	for _, stream := range streamData.Data {
+	for key, stream := range streamData.Data {
+		if key == "ao" && len(streamData.Data) > 1 {
+			continue
+		}
+
 		if len(stream.Main.FLV) > 0 {
 			return stream.Main.FLV, nil
 		}
