@@ -2,6 +2,7 @@ package kick
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -28,12 +29,18 @@ func (c *Client) Dial() error {
 	var hlsURL *url.URL
 	path := strings.Split(c.url.Path, "/")
 	if len(path) > 3 && path[2] == "videos" {
-		rawURL, err := GetVideoHLSURL(client, path[3])
+		channel, err := GetChannel(client, path[1])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get channel info: %w", err)
 		}
 
-		hlsURL, err = url.Parse(rawURL)
+		video, err := GetVideo(client, channel.ID, path[3])
+		if err != nil {
+			return fmt.Errorf("failed to get video info: %w", err)
+		}
+		log.Printf("[KICK] video title: %s", video.Title)
+
+		hlsURL, err = url.Parse(video.RecordingURL)
 		if err != nil {
 			return err
 		}
