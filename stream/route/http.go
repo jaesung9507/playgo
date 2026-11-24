@@ -13,6 +13,7 @@ import (
 	"github.com/jaesung9507/playgo/stream/codec/h26x/h265"
 	"github.com/jaesung9507/playgo/stream/format/ts"
 	"github.com/jaesung9507/playgo/stream/platform/cime"
+	"github.com/jaesung9507/playgo/stream/platform/kbs"
 	"github.com/jaesung9507/playgo/stream/platform/kick"
 	"github.com/jaesung9507/playgo/stream/platform/naver"
 	"github.com/jaesung9507/playgo/stream/platform/pandatv"
@@ -53,6 +54,8 @@ func NewHTTPClient(parsedURL *url.URL) (stream.Client, error) {
 		return popkontv.New(parsedURL), nil
 	case "sbs.co.kr", "www.sbs.co.kr", "allvod.sbs.co.kr", "programs.sbs.co.kr":
 		return sbs.New(parsedURL), nil
+	case "onair.kbs.co.kr":
+		return kbs.New(parsedURL), nil
 	case "tiktok.com", "www.tiktok.com":
 		return tiktok.New(parsedURL), nil
 	case "chzzk.naver.com", "tv.naver.com", "view.shoppinglive.naver.com", "comic.naver.com":
