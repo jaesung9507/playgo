@@ -60,6 +60,7 @@ The following platforms are supported via direct URL input.
 | SBS | AllVOD | https://allvod.sbs.co.kr/watch/{group}/{programID}/{mediaID} |
 | SBS | Program | https://programs.sbs.co.kr/{section}/{programCode}/{group}/{menuID}/{mediaID} |
 | KBS | On Air | https://onair.kbs.co.kr/index.html?sname=onair&stype=live&ch_code={channelCode}[&group_code={groupCode}] |
+| KBS | VOD | https://vod.kbs.co.kr/index.html?source={source}&sname=vod&stype=vod&contents_id={contentsID}&program_code={programCode}&program_id={programID}&section_code={sectionCode}[&broadcast_complete_yn=N] |
 
 ### General Features
 - Cross-platform support (Windows, macOS, Linux)

@@ -18,6 +18,8 @@ import (
 	"github.com/deepch/vdk/format/mp4"
 )
 
+type NewDemuxerFunc func(io.ReadSeeker) stream.Demuxer
+
 type MP4Client struct {
 	url         *url.URL
 	closer      io.Closer
@@ -26,6 +28,8 @@ type MP4Client struct {
 	packetQueue chan *stream.Packet
 	tls         secure.TLS
 	httpClient  *http.Client
+	newDemuxer  NewDemuxerFunc
+	workaround  bool
 }
 
 func NewMP4Client(parsedUrl *url.URL) *MP4Client {
@@ -33,11 +37,20 @@ func NewMP4Client(parsedUrl *url.URL) *MP4Client {
 		url:         parsedUrl,
 		signal:      make(chan any, 1),
 		packetQueue: make(chan *stream.Packet),
+		newDemuxer: func(r io.ReadSeeker) stream.Demuxer {
+			return vdk.ToDemuxer(mp4.NewDemuxer(r))
+		},
+		workaround: true,
 	}
 }
 
 func (c *MP4Client) SetHTTPClient(client *http.Client) {
 	c.httpClient = client
+}
+
+func (c *MP4Client) SetNewDemuxer(fn NewDemuxerFunc) {
+	c.newDemuxer = fn
+	c.workaround = false
 }
 
 func (c *MP4Client) Dial() error {
@@ -74,9 +87,9 @@ func (c *MP4Client) Dial() error {
 		}
 		log.Print("[HTTP-MP4] finish download")
 
-		c.demuxer = vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data)))
+		c.demuxer = c.newDemuxer(bytes.NewReader(data))
 	} else {
-		c.demuxer = vdk.ToDemuxer(mp4.NewDemuxer(srs))
+		c.demuxer = c.newDemuxer(srs)
 		c.closer = srs
 	}
 
@@ -105,14 +118,16 @@ func (c *MP4Client) CodecData() ([]stream.Codec, error) {
 					return
 				}
 
-				// WORKAROUND: Correct invalid cts values from the vdk mp4 demuxer that cause decode failures on macOS
-				if packet.IsKeyFrame && packet.CompositionTime > 0 {
-					baseCtsOffset = packet.CompositionTime
-				} else if baseCtsOffset > 0 && packet.CompositionTime == 0 {
-					baseCtsOffset = 0
-				}
-				if baseCtsOffset > 0 {
-					packet.CompositionTime -= baseCtsOffset
+				if c.workaround {
+					// WORKAROUND: Correct invalid cts values from the vdk mp4 demuxer that cause decode failures on macOS
+					if packet.IsKeyFrame && packet.CompositionTime > 0 {
+						baseCtsOffset = packet.CompositionTime
+					} else if baseCtsOffset > 0 && packet.CompositionTime == 0 {
+						baseCtsOffset = 0
+					}
+					if baseCtsOffset > 0 {
+						packet.CompositionTime -= baseCtsOffset
+					}
 				}
 
 				c.packetQueue <- &packet

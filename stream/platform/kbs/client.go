@@ -3,18 +3,22 @@ package kbs
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"strings"
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
+	"github.com/jaesung9507/playgo/stream/format/mp4"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
+	"github.com/jaesung9507/playgo/stream/protocol/http"
 )
 
 type Client struct {
 	url       *url.URL
 	hlsClient *hls.Client
+	mp4Client *http.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -27,7 +31,7 @@ func New(parsedURL *url.URL) *Client {
 func (c *Client) Dial() error {
 	client := (&secure.TLS{}).HTTPClient()
 	log.Printf("[KBS] dial: %s", c.url.String())
-	var hlsURL *url.URL
+	var hlsURL, mp4URL *url.URL
 	switch c.url.Host {
 	case "onair.kbs.co.kr":
 		chCode := c.url.Query().Get("ch_code")
@@ -56,11 +60,39 @@ func (c *Client) Dial() error {
 			}
 			break
 		}
+	case "vod.kbs.co.kr":
+		contents, err := GetContents(client, c.url.String())
+		if err != nil {
+			return err
+		}
+		log.Printf("[KBS] video title: %s", contents.ContentsTitle())
+
+		if contents.CDNFileName != "" {
+			hlsURL, err = url.Parse(contents.CDNFileName)
+			if err != nil {
+				return err
+			}
+		} else if contents.Play1URL != "" {
+			mp4URL, err = url.Parse(contents.Play1URL)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New("not found media url")
+		}
 	}
 
 	if hlsURL != nil {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
+	}
+
+	if mp4URL != nil {
+		c.mp4Client = http.NewMP4Client(mp4URL)
+		c.mp4Client.SetNewDemuxer(func(r io.ReadSeeker) stream.Demuxer {
+			return mp4.NewDemuxer(r)
+		})
+		return c.mp4Client.Dial()
 	}
 
 	return errors.New("not supported url")
@@ -71,11 +103,19 @@ func (c *Client) Close() {
 	if c.hlsClient != nil {
 		c.hlsClient.Close()
 	}
+
+	if c.mp4Client != nil {
+		c.mp4Client.Close()
+	}
 }
 
 func (c *Client) CodecData() ([]stream.Codec, error) {
 	if c.hlsClient != nil {
 		return c.hlsClient.CodecData()
+	}
+
+	if c.mp4Client != nil {
+		return c.mp4Client.CodecData()
 	}
 
 	return nil, errors.New("not supported")
@@ -86,6 +126,10 @@ func (c *Client) PacketQueue() <-chan *stream.Packet {
 		return c.hlsClient.PacketQueue()
 	}
 
+	if c.mp4Client != nil {
+		return c.mp4Client.PacketQueue()
+	}
+
 	return nil
 }
 
@@ -94,12 +138,20 @@ func (c *Client) CloseCh() <-chan any {
 		return c.hlsClient.CloseCh()
 	}
 
+	if c.mp4Client != nil {
+		return c.mp4Client.CloseCh()
+	}
+
 	return nil
 }
 
 func (c *Client) Secure() (bool, bool, map[string]string) {
 	if c.hlsClient != nil {
 		return c.hlsClient.Secure()
+	}
+
+	if c.mp4Client != nil {
+		return c.mp4Client.Secure()
 	}
 
 	return false, false, nil

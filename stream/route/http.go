@@ -54,7 +54,7 @@ func NewHTTPClient(parsedURL *url.URL) (stream.Client, error) {
 		return popkontv.New(parsedURL), nil
 	case "sbs.co.kr", "www.sbs.co.kr", "allvod.sbs.co.kr", "programs.sbs.co.kr":
 		return sbs.New(parsedURL), nil
-	case "onair.kbs.co.kr":
+	case "onair.kbs.co.kr", "vod.kbs.co.kr":
 		return kbs.New(parsedURL), nil
 	case "tiktok.com", "www.tiktok.com":
 		return tiktok.New(parsedURL), nil
