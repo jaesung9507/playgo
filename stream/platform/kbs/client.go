@@ -2,6 +2,7 @@ package kbs
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -32,6 +33,11 @@ func (c *Client) Dial() error {
 		chCode := c.url.Query().Get("ch_code")
 		if chCode == "" {
 			chCode = "11"
+		}
+
+		groupCode := c.url.Query().Get("group_code")
+		if groupCode != "" {
+			chCode = fmt.Sprintf("%s_%s", groupCode, chCode)
 		}
 
 		chs, err := GetChannels(client, chCode)
