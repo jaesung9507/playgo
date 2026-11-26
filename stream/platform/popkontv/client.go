@@ -1,7 +1,6 @@
 package popkontv
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -10,17 +9,15 @@ import (
 
 	"github.com/jaesung9507/playgo/secure"
 	"github.com/jaesung9507/playgo/stream"
+	"github.com/jaesung9507/playgo/stream/format/mp4"
 	"github.com/jaesung9507/playgo/stream/protocol/hls"
 	"github.com/jaesung9507/playgo/stream/protocol/http"
-	"github.com/jaesung9507/playgo/stream/vdk"
-
-	"github.com/deepch/vdk/format/mp4"
 )
 
 type Client struct {
 	url       *url.URL
 	hlsClient *hls.Client
-	mp4Client *http.Client
+	mp4Client *http.MP4Client
 }
 
 func New(parsedURL *url.URL) *Client {
@@ -50,6 +47,17 @@ func (c *Client) Dial() error {
 		if err != nil {
 			return err
 		}
+	} else if strings.HasPrefix(c.url.Path, "/vod/") {
+		vod, err := GetVODInfo(client, c.url.String())
+		if err != nil {
+			return err
+		}
+		log.Printf("[PopkonTV] video title: %s", vod.Title)
+
+		mp4URL, err = url.Parse(vod.Address)
+		if err != nil {
+			return err
+		}
 	} else if strings.HasPrefix(c.url.Path, "/clip/") {
 		clip, err := GetClipInfo(client, c.url.String())
 		if err != nil {
@@ -67,12 +75,9 @@ func (c *Client) Dial() error {
 		c.hlsClient = hls.New(hlsURL)
 		return c.hlsClient.Dial()
 	} else if mp4URL != nil {
-		c.mp4Client = http.New(mp4URL, func(r io.Reader) (stream.Demuxer, error) {
-			data, err := io.ReadAll(r)
-			if err != nil {
-				return nil, err
-			}
-			return vdk.ToDemuxer(mp4.NewDemuxer(bytes.NewReader(data))), nil
+		c.mp4Client = http.NewMP4Client(mp4URL)
+		c.mp4Client.SetNewDemuxer(func(r io.ReadSeeker) stream.Demuxer {
+			return mp4.NewDemuxer(r)
 		})
 		return c.mp4Client.Dial()
 	}

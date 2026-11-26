@@ -17,6 +17,12 @@ type LiveInfo struct {
 	PartnerCode   string `json:"mc_partnerCode"`
 }
 
+type VODInfo struct {
+	Title    string `json:"vodTitle"`
+	Address  string `json:"vodAddress"`
+	Nickname string `json:"nickName"`
+}
+
 type ClipInfo struct {
 	Title   string `json:"vodTitle"`
 	Address string `json:"vodAddress"`
@@ -114,6 +120,50 @@ func GetLiveInfo(client *http.Client, videoURL string) (*LiveInfo, error) {
 	}
 
 	return mcdata.Data, nil
+}
+
+func GetVODInfo(client *http.Client, videoURL string) (*VODInfo, error) {
+	resp, err := client.Get(videoURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("http status code: %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read body: %w", err)
+	}
+
+	m := regexp.MustCompile(`(?s)<script [^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>`).FindSubmatch(data)
+	if len(m) < 2 {
+		return nil, fmt.Errorf("not found data: content-length=%d", len(data))
+	}
+
+	result := &struct {
+		Props struct {
+			PageProps struct {
+				VODDetailFallback struct {
+					Data       *VODInfo `json:"data"`
+					StatusCode string   `json:"statusCd"`
+					StatusMsg  string   `json:"statusMsg"`
+				} `json:"vodDetailFallback"`
+			} `json:"pageProps"`
+		} `json:"props"`
+	}{}
+	if err = json.Unmarshal(m[1], result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+
+	vod := result.Props.PageProps.VODDetailFallback
+	if vod.StatusCode != "S2000" || vod.Data == nil {
+		return nil, fmt.Errorf("api status code=%q, msg=%q", vod.StatusCode, vod.StatusMsg)
+	}
+
+	return vod.Data, nil
 }
 
 func GetClipInfo(client *http.Client, videoURL string) (*ClipInfo, error) {

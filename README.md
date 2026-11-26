@@ -55,6 +55,7 @@ The following platforms are supported via direct URL input.
 | WEBTOON | Cuts | https://comic.naver.com/cuts/v?id={cutsID} |
 | Panda TV | Live | https://www.pandalive.co.kr/play/{userID} |
 | Popkon TV | Live | https://www.popkontv.com/live/view?castId={castID}&partnerCode={partnerCode} |
+| Popkon TV | VOD | https://www.popkontv.com/vod/{vodID} |
 | Popkon TV | Clip | https://www.popkontv.com/clip/{clipID} |
 | SBS | Live | https://www.sbs.co.kr/live/{channelID} |
 | SBS | AllVOD | https://allvod.sbs.co.kr/watch/{group}/{programID}/{mediaID} |
